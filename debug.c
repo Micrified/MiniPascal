@@ -24,7 +24,7 @@ void printOperation () {
 void printWhitespace () {
     switch (*yytext) {
         case '\n':
-            fprintf(stderr, C_TAF(DIM, BLK, "\\n\n%d.\t"), lineNumber + 1);
+            fprintf(stderr, C_TAF(DIM, BLK, "\\n\n%d.\t"), yylineno + 1);
             break;
         case '\t':
             fprintf(stderr, C_TAF(DIM, BLK, "--->"));
@@ -35,10 +35,16 @@ void printWhitespace () {
     }
 }
 
+void printNaughty() {
+    fprintf(stderr, C_TAF(BOL, RED, "\nBAD TOKEN: "));
+    fprintf(stderr, C_TAF(UND, MAG, "%s"), yytext);
+    putc('\n', stderr);
+}
+
 void printToken (SyntaxType t) {
     static int init = 0;
     if (!init) {
-        fprintf(stderr, C_TAF(DIM, BLK, "%d.\t"), lineNumber);
+        fprintf(stderr, C_TAF(DIM, BLK, "%d.\t"), yylineno);
         init = 1;
     }
     switch (t) {
@@ -59,5 +65,7 @@ void printToken (SyntaxType t) {
 
         case Whitespace: printWhitespace();
         break;
+
+        case Naughty: printNaughty();
     }
 }

@@ -25,11 +25,12 @@ typedef enum {
     Identifier,
     Literal,
     Operation,
-    Whitespace
+    Whitespace,
+    Naughty
 } SyntaxType;
 
 extern char *yytext;
-extern int lineNumber;
+extern int yylineno;
 
 /*
 ***************************************************************************

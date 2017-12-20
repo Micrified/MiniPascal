@@ -10,11 +10,10 @@
      ***************************************************************************
     */
 
-    /* Number of the current line parsed */
-    int lineNumber = 1;
-
+    /* Debugging toolset */
     #include "debug.c"
 
+    /* Counts newlines in the given string. Used to count newlines in comments */
     int newlineCount (const char *sp);
 %}
 
@@ -77,15 +76,17 @@ comment         \{[^\}]*\}
 ";"             { printToken(Structure);    return MP_SCOLON;   }
 ".."            { printToken(Structure);    return MP_ELLIPSES; }
 "."             { printToken(Structure);    return MP_FSTOP;    }
-\n              { printToken(Whitespace);   lineNumber++;       }
+\n              { printToken(Whitespace);   yylineno++;         }
 {ws}            { printToken(Whitespace);                       }
 {identifier}    { printToken(Identifier);   return MP_ID;       }
-{comment}       { lineNumber += newlineCount(yytext);           }
-<<EOF>>         { printToken(Control);    return MP_EOF;        }
-.               { fprintf(stderr, "{{{%s}}}", yytext); return MP_WTF; }
+{comment}       { yylineno += newlineCount(yytext);             }
+
+<<EOF>>         { printToken(Control);  return MP_EOF;          }
+.               { printToken(Naughty);  return MP_WTF;          }
 
 %%
 
+/* Counts the number of newlines in the given string */
 int newlineCount (const char *sp) {
     int c, count = 0;
     while ((c = *sp++) != '\0') {

@@ -1,6 +1,14 @@
 /*
+  ***************************************************************************
+  *                      Mini Pascal Syntax Analysis                        *
+  * AUTHORS: Charles Randolph, Joe Jones.                                   *
+  * SNUMBERS: s2897318, s2990652.                                           *
+  ***************************************************************************
+*/
+    
+/*
 ********************************************************************************
-*                     Definitions, Rules, Verbatim Sections
+*                                 Verbatim C 
 ********************************************************************************
 */
 
@@ -9,46 +17,59 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/* Variables local to lex.yy.c */
 extern int yylex();
-extern int lineNumber;
+extern int yylineno;
 
+/* Handler for Bison parse errors */
 int yyerror(char *s) {
-  printf("PARSE ERROR (%d)\n", lineNumber);
+  printf("PARSE ERROR (%d)\n", yylineno);
   exit(EXIT_SUCCESS);
 }
 
 %}
 
-/* Bison declarations.  */
-%union {
-  float fval;
-  char *strtabptr;
-}
+/*
+********************************************************************************
+*                               Token Declarations
+********************************************************************************
+*/
 
+// Structural Tokens.
 %token MP_PROGRAM
-%token MP_ID
-%token MP_ASSIGNOP 
-%token MP_RELOP
-%token MP_ADDOP 
-%token MP_MULOP 
-%token MP_END 
+%token MP_BEGIN
+%token MP_END
+%token MP_EOF
+
+// Control Flow Tokens.
 %token MP_WHILE
 %token MP_DO
 %token MP_IF
 %token MP_THEN
 %token MP_ELSE
+
+// Operator Tokens.
+%token MP_RELOP
+%token MP_ADDOP 
+%token MP_MULOP 
+
+// Primitive Tokens.
+%token MP_ID
 %token MP_NUM
-%token MP_BEGIN
-%token MP_EOF
+
+// Type Tokens.
+%token MP_TYPE_INTEGER
+%token MP_TYPE_REAL
 %token MP_FUNCTION
 %token MP_PROCEDURE
 %token MP_ARRAY
-%token MP_OF
 %token MP_VAR
-%token MP_TYPE_INTEGER
-%token MP_TYPE_REAL
 
-/* Punctuation Tokens */
+// Assignment/Relation Tokens.
+%token MP_ASSIGNOP 
+%token MP_OF
+
+// Punctuation Tokens.
 %token MP_COMMA
 %token MP_POPEN             
 %token MP_PCLOSE
@@ -59,9 +80,22 @@ int yyerror(char *s) {
 %token MP_FSTOP
 %token MP_ELLIPSES
 
-/* Unexpected Tokens */
+// Unexpected Tokens.
 %token MP_WTF
 
+/*
+********************************************************************************
+*                               Bison Declarations
+********************************************************************************
+*/
+
+// Bison Declarations.
+%union {
+  float fval;
+  char *strtabptr;
+}
+
+// Starting Grammar Rule.
 %start program
 
 %%
@@ -71,7 +105,6 @@ int yyerror(char *s) {
 *                                   Grammar
 ********************************************************************************
 */
-
 
 program : MP_PROGRAM MP_ID MP_POPEN identifierList MP_PCLOSE MP_SCOLON declarations subprogramDeclarations compoundStatement MP_FSTOP MP_EOF { printf("ACCEPTED\n"); exit(0); }
         ;
@@ -167,7 +200,7 @@ sign  : MP_ADDOP
 
 /*
  ********************************************************************************
- *                                  Routines
+ *                                  C Routines
  ********************************************************************************
  */
 
