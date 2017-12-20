@@ -59,6 +59,8 @@ int yyerror(char *s) {
 %token MP_FSTOP
 %token MP_ELLIPSES
 
+/* Unexpected Tokens */
+%token MP_WTF
 
 %start program
 

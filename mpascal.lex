@@ -82,7 +82,7 @@ comment         \{[^\}]*\}
 {identifier}    { printToken(Identifier);   return MP_ID;       }
 {comment}       { lineNumber += newlineCount(yytext);           }
 <<EOF>>         { printToken(Control);    return MP_EOF;        }
-.               { fprintf(stderr, "{{{%s}}}", yytext);          }
+.               { fprintf(stderr, "{{{%s}}}", yytext); return MP_WTF; }
 
 %%
 
