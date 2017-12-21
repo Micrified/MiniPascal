@@ -57,5 +57,8 @@ IdEntry *installEntry (IdEntry entry);
 /* Removes all entries in the given level */
 void freeTableLevel (int lvl);
 
+/* Debug Method: Print state of the symbol tables */
+void printSymbolTables (void);
+
 
 #endif
