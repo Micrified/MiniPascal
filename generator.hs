@@ -4,16 +4,17 @@ module Main where
     import System.Exit
 
     -- English Alphabet.
-    alphabet :: String
-    alphabet = "abcdefghijklmnopqrstuvwxyz"
+    alphabet :: [String]
+    alphabet = map (\x -> [x]) "abcdefghijklmnopqrstuvwxyz"
 
     -- Infinite generator of all identifier permutations.
     identifiers :: [String]
-    identifiers = moreIdentifiers $ map (\x -> [x]) alphabet
+    identifiers = moreIdentifiers alphabet
         where
             moreIdentifiers :: [String] -> [String]
-            moreIdentifiers xs = let zs = [x ++ [y] | x <- xs, y <- alphabet] in xs ++ zs ++ moreIdentifiers zs
+            moreIdentifiers xs = let zs = [x ++ y | x <- xs, y <- alphabet] in zs ++ moreIdentifiers zs
 
+    -- Reads integer argument from command arg vector.
     getIntArg :: IO Int
     getIntArg = fmap (read . head) getArgs
 

@@ -154,7 +154,7 @@ IdEntry *installEntry (IdEntry entry) {
 
     // If the entry exists, then produce an error (should have looked up).
     if ((lp = listContains(identifier, symTable[k][level])) != NULL) {
-        fprintf(stderr, "Error: Try avoid installing something twice!\n");
+        fprintf(stderr, "Error: Try to avoid installing something twice!\n");
         exit(EXIT_FAILURE);
     }
 
@@ -181,29 +181,4 @@ void printSymbolTables (void) {
      }
 }
 
-int main (void) {
-    printf("***** Testing the Symbol Table *****\n");
-    char *max = "maxValue";
-    char *min = "minimumSize";
-    char *name = "ObjectManager";
-
-    printf("1) Installing all identifiers to string table!\n");
-    installId(max);
-    installId(min);
-    installId(name);
-    printf("Done, string table:\n");
-    printStringTable();
-
-    printf("2) Creating tokens for the identifiers. Placing in symbol table.\n");
-    int token_max = 0, token_min = 0, token_name = 1;
-
-    installEntry(newIDEntry(installId(max), token_max));
-    installEntry(newIDEntry(installId(min), token_min));
-    installEntry(newIDEntry(installId(name), token_name));
-
-    printf("Done, symbol table:\n");
-    printSymbolTables();
-
-    return 0;
-}
 
