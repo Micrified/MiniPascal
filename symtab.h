@@ -17,15 +17,37 @@
 
 /*
 ********************************************************************************
-*                            External Data Structures                          *
+*                 External Data Structures & Symbolic Constants                *
 ********************************************************************************
 */
+
+/* Token Types */
+#define TT_INTEGER              0
+#define TT_REAL                 1
+#define TT_ARRAY_INTEGER        2
+#define TT_ARRAY_REAL           3
+#define TT_FUNCTION_INTEGER     4
+#define TT_FUNCTION_REAL        5
+
+#define TT_UNDEFINED            ~0
+
+/* Token Type Class Masks */
+#define TC_ARRAY                2
+#define TC_FUNCTION             4
 
 /* ID Entry: Stores information about identifer */
 typedef struct {
     unsigned id;    // Identifier index in string table.
     unsigned tt;    // Identifier token type.
 } IdEntry;
+
+/*
+********************************************************************************
+*                              Token Type Routines                             *
+********************************************************************************
+*/
+
+
 
 /*
 ********************************************************************************

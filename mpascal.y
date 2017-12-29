@@ -16,6 +16,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include "semantics.h"
 
 /* Variables local to lex.yy.c */
 extern int yylex();
@@ -25,6 +26,15 @@ extern int yylineno;
 int yyerror(char *s) {
   printf("PARSE ERROR (%d)\n", yylineno);
   exit(EXIT_SUCCESS);
+}
+
+/* Returns alternative token type if no IdEntry for given identifier */
+unsigned try (const char *identifier, unsigned otherwise) {
+  IdEntry *entry;
+  if ((entry = tableContains(identifier)) == NULL) {
+    return otherwise;
+  }
+  return entry->tt;
 }
 
 %}
@@ -55,7 +65,8 @@ int yyerror(char *s) {
 
 // Primitive Tokens.
 %token MP_ID
-%token MP_NUM
+%token MP_INTEGER
+%token MP_REAL
 
 // Type Tokens.
 %token MP_TYPE_INTEGER
@@ -91,8 +102,7 @@ int yyerror(char *s) {
 
 // Bison Declarations.
 %union {
-  float fval;
-  char *strtabptr;
+  unsigned tokenType;
 }
 
 // Starting Grammar Rule.
@@ -118,7 +128,7 @@ declarations  : declarations MP_VAR identifierList MP_COLON type MP_SCOLON
               ;
 
 type  : standardType
-      | MP_ARRAY MP_BOPEN MP_NUM MP_ELLIPSES MP_NUM MP_BCLOSE MP_OF standardType
+      | MP_ARRAY MP_BOPEN MP_INTEGER MP_ELLIPSES MP_INTEGER MP_BCLOSE MP_OF standardType
       ;
 
 standardType  : MP_TYPE_INTEGER
@@ -173,24 +183,25 @@ expressionList  : expression
                 | expressionList MP_COMMA expression 
                 ;
 
-expression  : simpleExpression
-            | simpleExpression MP_RELOP simpleExpression
+expression  : simpleExpression                            { $$ = $1; }
+            | simpleExpression MP_RELOP simpleExpression  { $$ = resolveOperation($1, $3); }
             ;
 
-simpleExpression  : term
-                  | sign term
-                  | simpleExpression MP_ADDOP term
+simpleExpression  : term                                  { $$ = $1; }
+                  | sign term                             { $$ = $2; }
+                  | simpleExpression MP_ADDOP term        { $$ = resolveOperation($1, $3); }
                   ;
 
-term  : factor
-      | term MP_MULOP factor
+term  : factor                                            { $$ = $1 }
+      | term MP_MULOP factor                              { $$ = resolveOperation($1, $3); }
       ;
 
-factor  : MP_ID
-        | MP_ID MP_POPEN expressionList MP_PCLOSE
-        | MP_ID MP_BOPEN expression MP_BCLOSE
-        | MP_NUM
-        | MP_POPEN expression MP_PCLOSE
+factor  : MP_ID                                           { $$ = getTypeElseInstall(yytext, TT_UNDEFINED); }
+        | MP_ID MP_POPEN expressionList MP_PCLOSE         { $$ = resolveClass(yytext, TC_FUNCTION); }
+        | MP_ID MP_BOPEN expression MP_BCLOSE             { $$ = resolveClass(yytext, TC_ARRAY); }
+        | MP_INTEGER                                      { $$ = TT_INTEGER; }
+        | MP_REAL                                         { $$ = TT_REAL; }
+        | MP_POPEN expression MP_PCLOSE                   { $$ = $2; }
         ;
 
 sign  : MP_ADDOP
