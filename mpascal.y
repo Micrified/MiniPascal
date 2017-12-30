@@ -16,7 +16,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "semantics.h"
+
+/* Custom Routine Imports */
+#include "strtab.h"     // String Table.
+#include "numtab.h"     // Number Table.
+#include "symtab.h"     // Symbol Table.
+#include "semantics.h"  // Semantic Checking Routines.
 
 /* Variables local to lex.yy.c */
 extern int yylex();
@@ -26,15 +31,6 @@ extern int yylineno;
 int yyerror(char *s) {
   printf("PARSE ERROR (%d)\n", yylineno);
   exit(EXIT_SUCCESS);
-}
-
-/* Returns alternative token type if no IdEntry for given identifier */
-unsigned try (const char *identifier, unsigned otherwise) {
-  IdEntry *entry;
-  if ((entry = tableContains(identifier)) == NULL) {
-    return otherwise;
-  }
-  return entry->tt;
 }
 
 %}
@@ -62,6 +58,8 @@ unsigned try (const char *identifier, unsigned otherwise) {
 %token MP_RELOP
 %token MP_ADDOP 
 %token MP_MULOP 
+%token MP_DIVOP
+%token MP_MODOP
 
 // Primitive Tokens.
 %token MP_ID
@@ -100,10 +98,13 @@ unsigned try (const char *identifier, unsigned otherwise) {
 ********************************************************************************
 */
 
-// Bison Declarations.
+// Bison YYSTYPE Declarations.
 %union {
-  unsigned tokenType;
+  exprType;
 }
+
+// Nonterminal return type rules.
+%type <exprType> factor term simpleExpression expression
 
 // Starting Grammar Rule.
 %start program
@@ -189,18 +190,20 @@ expression  : simpleExpression                            { $$ = $1; }
 
 simpleExpression  : term                                  { $$ = $1; }
                   | sign term                             { $$ = $2; }
-                  | simpleExpression MP_ADDOP term        { $$ = resolveOperation($1, $3); }
+                  | simpleExpression MP_ADDOP term        { $$ = resolveOperation(MP_ADDOP, $1, $3); }
                   ;
 
 term  : factor                                            { $$ = $1 }
-      | term MP_MULOP factor                              { $$ = resolveOperation($1, $3); }
+      | term MP_MULOP factor                              { $$ = resolveOperation(MP_MULOP, $1, $3); }
+      | term MP_DIVOP factor                              { $$ = resolveOperation(MP_DIVOP, $1, $3); }
+      | term MP_MODOP factor                              { $$ = resolveOperation(MP_MODOP, $1, $3); }
       ;
 
-factor  : MP_ID                                           { $$ = getTypeElseInstall(yytext, TT_UNDEFINED); }
-        | MP_ID MP_POPEN expressionList MP_PCLOSE         { $$ = resolveClass(yytext, TC_FUNCTION); }
-        | MP_ID MP_BOPEN expression MP_BCLOSE             { $$ = resolveClass(yytext, TC_ARRAY); }
-        | MP_INTEGER                                      { $$ = TT_INTEGER; }
-        | MP_REAL                                         { $$ = TT_REAL; }
+factor  : MP_ID                                           { $$ = (exprType){.tt = getTypeElseInstall(yytext, TT_UNDEFINED), .vi = NIL}; }
+        | MP_ID MP_POPEN expressionList MP_PCLOSE         { $$ = (exprType){.tt = resolveTypeClass(yytext, TC_FUNCTION), .vi = NIL}; }
+        | MP_ID MP_BOPEN expression MP_BCLOSE             { $$ = (exprType){.tt = resolveTypeClass(yytext, TC_ARRAY), .vi = NIL}; }
+        | MP_INTEGER                                      { $$ = (exprType){.tt = TT_INTEGER, .vi = installNumber(atof(yytext))}; }
+        | MP_REAL                                         { $$ = (exprType){.tt = TT_REAL, .vi = installNumber(atof(yytext))}; }
         | MP_POPEN expression MP_PCLOSE                   { $$ = $2; }
         ;
 

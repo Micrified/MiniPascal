@@ -24,7 +24,7 @@ identifier      {letter}({letter}|{digit}|"_")*
 integer         {digit}+
 real            {integer}("."{integer})?
 addop           [+-]
-mulop           [*/]
+mulop           [*]
 comment         \{[^\}]*\}
 
 %%
@@ -64,8 +64,9 @@ comment         \{[^\}]*\}
 {addop}         { printToken(Operation);    return MP_ADDOP;    }
 
 {mulop}         { printToken(Operation);    return MP_MULOP;    } 
-(?i:DIV)        { printToken(Operation);    return MP_MULOP;    }
-(?i:MOD)        { printToken(Operation);    return MP_MULOP;    }
+(?i:DIV)        { printToken(Operation);    return MP_DIVOP;    }
+(?i:MOD)        { printToken(Operation);    return MP_MODOP;    }
+"/"             { printToken(Operation);    return MP_DIVOP;    }
 
 ","             { printToken(Structure);    return MP_COMMA;    }
 "("             { printToken(Structure);    return MP_POPEN;    }                 

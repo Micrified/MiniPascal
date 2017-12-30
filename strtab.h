@@ -22,7 +22,7 @@
 /* Initializes the string table */
 void initStringTable ();
 
-/* Returns index of installed identifier. If not yet in table, it is created. */
+/* Returns index of installed identifier. If not yet in table, it is created */
 unsigned installId (const char *identifier);
 
 /* Returns pointer to identifier lexeme at given index in the string table */
