@@ -11,7 +11,7 @@
 
 /*
 ********************************************************************************
-*                               Symbolic Constants                             *
+*                        Symbolic Constants: ExprType                          *
 ********************************************************************************
 */
 
@@ -33,6 +33,9 @@
 // Token-Types: Functions.
 #define TT_FUNCTION_INTEGER     8
 #define TT_FUNCTION_REAL        9
+
+// Token-Types: Boolean.
+#define TT_BOOLEAN              16
 
 /*
 ********************************************************************************

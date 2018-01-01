@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "mpascal.tab.h"
 #include "mptypes.h"
 #include "symtab.h"
 
@@ -34,13 +35,16 @@ unsigned resolveTypeClass (const char *identifier,  unsigned class);
  * 3. Promotes result if operands are mismatched.
 */
 
-/* Returns resulting exprType of an operation between two exprTypes. 
+/* Returns resulting exprType of an arithmetic operation between two exprTypes. 
  * 1. If operator involves division, throw div-zero-error if 'b' is zero.
  * 2. If operands are both primitives but mismatching, throw warning.
  * 3. If any operand has no constant value, then result is just the type.
  * Results are type-promoted in case of (2). */ 
-exprType resolveOperation (unsigned operator, exprType a, exprType b);
+exprType resolveArithmeticOperation (unsigned operator, exprType a, exprType b);
 
-
+/* Returns resulting exprType for a boolean operation between two exprTypes.
+ * 1. If any operand is undefined, an error is thrown.
+*/
+exprType resolveBooleanOperation (exprType a, exprType b);
 
 #endif 

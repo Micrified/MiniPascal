@@ -18,14 +18,12 @@
 #include <stdlib.h>
 
 /* Custom Routine Imports */
-#include "strtab.h"     // String Table.
-#include "numtab.h"     // Number Table.
-#include "symtab.h"     // Symbol Table.
 #include "semantics.h"  // Semantic Checking Routines.
 
 /* Variables local to lex.yy.c */
 extern int yylex();
 extern int yylineno;
+extern char *yytext;
 
 /* Handler for Bison parse errors */
 int yyerror(char *s) {
@@ -98,13 +96,21 @@ int yyerror(char *s) {
 ********************************************************************************
 */
 
+// YYSTYPE Dependencies.
+%code requires {
+  #include "mptypes.h"    // Types used in symantic checker.
+  #include "strtab.h"     // String Table.
+  #include "numtab.h"     // Number Table.
+  #include "symtab.h"     // Symbol Table.
+}
+
 // Bison YYSTYPE Declarations.
 %union {
-  exprType;
+  exprType expr;
 }
 
 // Nonterminal return type rules.
-%type <exprType> factor term simpleExpression expression
+%type <expr> factor term simpleExpression expression
 
 // Starting Grammar Rule.
 %start program
@@ -185,18 +191,18 @@ expressionList  : expression
                 ;
 
 expression  : simpleExpression                            { $$ = $1; }
-            | simpleExpression MP_RELOP simpleExpression  { $$ = resolveOperation($1, $3); }
+            | simpleExpression MP_RELOP simpleExpression  { $$ = resolveBooleanOperation($1, $3); }
             ;
 
 simpleExpression  : term                                  { $$ = $1; }
                   | sign term                             { $$ = $2; }
-                  | simpleExpression MP_ADDOP term        { $$ = resolveOperation(MP_ADDOP, $1, $3); }
+                  | simpleExpression MP_ADDOP term        { $$ = resolveArithmeticOperation(MP_ADDOP, $1, $3); }
                   ;
 
-term  : factor                                            { $$ = $1 }
-      | term MP_MULOP factor                              { $$ = resolveOperation(MP_MULOP, $1, $3); }
-      | term MP_DIVOP factor                              { $$ = resolveOperation(MP_DIVOP, $1, $3); }
-      | term MP_MODOP factor                              { $$ = resolveOperation(MP_MODOP, $1, $3); }
+term  : factor                                            { $$ = $1; }
+      | term MP_MULOP factor                              { $$ = resolveArithmeticOperation(MP_MULOP, $1, $3); }
+      | term MP_DIVOP factor                              { $$ = resolveArithmeticOperation(MP_DIVOP, $1, $3); }
+      | term MP_MODOP factor                              { $$ = resolveArithmeticOperation(MP_MODOP, $1, $3); }
       ;
 
 factor  : MP_ID                                           { $$ = (exprType){.tt = getTypeElseInstall(yytext, TT_UNDEFINED), .vi = NIL}; }

@@ -22,12 +22,12 @@ static double performOperation (unsigned operator, double a, double b) {
 
 /* Returns nonzero if the given token-type may be used in an arithmetic operation */
 static int isValidOperand (unsigned tt) {
-    return (tt > 0 && tt <= TT_FUNCTION_REAL);
+    return (tt > TT_UNDEFINED && tt <= TT_FUNCTION_REAL);
 }
 
 /* Returns nonzero if the given token-type is a primitive */
 static int isPrimitiveOperand (unsigned tt) {
-    return (tt > 0 && tt < TC_ARRAY);
+    return (tt > TT_UNDEFINED && tt < TC_ARRAY);
 }
 
 /* Reduces a valid operand type to a primitive type */
@@ -74,7 +74,7 @@ unsigned resolveTypeClass (const char *identifier,  unsigned class) {
 
     // Verify: Token-Type is of expected class.
     if ((entry->tt & class) == 0) {
-        fprintf(stderr, "Error: %s is not of class %u!\n", identifier, mask);
+        fprintf(stderr, "Error: %s is not of class %u!\n", identifier, class);
         exit(EXIT_FAILURE);
     }
 
@@ -87,7 +87,7 @@ unsigned resolveTypeClass (const char *identifier,  unsigned class) {
  * 2. If operator involves division, throw div-zero-error if 'b' is zero.
  * 3. If any operand has no constant value, then result is just the type.
  * Results are type-promoted in case of (2). */ 
-exprType resolveOperation (unsigned operator, exprType a, exprType b) {
+exprType resolveArithmeticOperation (unsigned operator, exprType a, exprType b) {
     double *vp;
 
     // (*). Verify operands are valid.
@@ -122,4 +122,15 @@ exprType resolveOperation (unsigned operator, exprType a, exprType b) {
 
     // (*). Return new exprType. Type promote resulting type if mismatched.
     return (exprType){.tt = MAX(a.tt, b.tt), .vi = newValueIndex};
+}
+
+/* Returns resulting exprType for a boolean operation between two exprTypes.
+ * 1. If any operand is undefined, an error is thrown.
+*/
+exprType resolveBooleanOperation (exprType a, exprType b) {
+    if (!isValidOperand(a.tt) || !isValidOperand(b.tt)) {
+        fprintf(stderr, "Error: Invalid comparison!\n");
+        exit(EXIT_FAILURE);
+    }
+    return (exprType){.tt = TT_BOOLEAN, .vi = NIL};
 }
