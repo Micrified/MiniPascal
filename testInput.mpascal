@@ -13,5 +13,8 @@ BEGIN
 
     { warning }
     x := 1 + 3.14;
+    x := 3.14 * 2;
+    
+    { error }
     x := 1 / 0
 END.

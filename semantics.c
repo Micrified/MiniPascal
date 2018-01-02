@@ -69,13 +69,13 @@ unsigned resolveTypeClass (const char *identifier,  unsigned class) {
     // Verify: IdEntry exists. 
     if ((entry = tableContains(identifier)) == NULL) {
         printError("\"%s\" is undefined!", identifier);
-        exit(EXIT_FAILURE);
+        return TT_UNDEFINED;
     }
 
     // Verify: Token-Type is of expected class.
     if ((entry->tt & class) == 0) {
         printError("\"%s\" is of an unexpected type!", identifier);
-        exit(EXIT_FAILURE);
+        return TT_UNDEFINED;
     }
 
     // Resolve class to primitive: 1 + (tt % 2) => (integer = 1, real = 2).
@@ -93,7 +93,7 @@ exprType resolveArithmeticOperation (unsigned operator, exprType a, exprType b) 
     // (*). Verify operands are valid.
     if (!isValidOperand(a.tt) || !isValidOperand(b.tt)) {
         printError("Operation between incompatible types!");
-        exit(EXIT_FAILURE);
+        return (exprType){.tt = TT_UNDEFINED, .vi = NIL};
     }
 
     // (*). Reduce types to primitives if necessary.
@@ -109,7 +109,7 @@ exprType resolveArithmeticOperation (unsigned operator, exprType a, exprType b) 
     if ((operator == MP_DIVOP || operator == MP_MODOP) && 
         (vp = numberAtIndex(b.vi)) != NULL && (*vp == 0.0)) {
         printError("Division by zero!");
-        exit(EXIT_FAILURE);
+        return (exprType){.tt = TT_UNDEFINED, .vi = NIL};
     }
 
     // (3). Determine resulting constant value.
@@ -130,7 +130,7 @@ exprType resolveArithmeticOperation (unsigned operator, exprType a, exprType b) 
 exprType resolveBooleanOperation (exprType a, exprType b) {
     if (!isValidOperand(a.tt) || !isValidOperand(b.tt)) {
         printError("Invalid comparison!");
-        exit(EXIT_FAILURE);
+        return (exprType){.tt = TT_UNDEFINED, .vi = NIL};
     }
     return (exprType){.tt = TT_BOOLEAN, .vi = NIL};
 }
