@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "debug.h"
 #include "mpascal.tab.h"
 #include "mptypes.h"
 #include "symtab.h"

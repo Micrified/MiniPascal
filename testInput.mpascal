@@ -1,16 +1,17 @@
-program sign(output);
+PROGRAM test (result);
 
-var x, y, xy, xyz : integer;
-var z : real;
-var as : array [1 .. 3] of real;
+VAR x : INTEGER;
+VAR y : REAL;
 
-begin
-   as[2] := 25.3;
-   x := 42;
-   y := -1;
-   xy := x*y;
-   xyz := -1*x + (-xy);
-   x := -x - x;
-   z := as[2];
-   writeln(z)$
-end.
+BEGIN
+    x := 1;
+    y := 3.14;
+    
+    { good }
+    x := 1 + 1 * 2 / 3;
+    y := 2.0 / 3.14 * 1.0 + 0.4;
+
+    { warning }
+    x := 1 + 3.14;
+    x := 1 / 0
+END.

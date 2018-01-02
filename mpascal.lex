@@ -10,6 +10,9 @@
      ***************************************************************************
     */
 
+    /* Debug flag */
+    int inDebug = 0;
+
     /* Debugging toolset */
     #include "debug.c"
 
@@ -82,8 +85,8 @@ comment         \{[^\}]*\}
 {identifier}    { printToken(Identifier);   return MP_ID;       }
 {comment}       { yylineno += newlineCount(yytext);             }
 
-<<EOF>>         { printToken(Control);  return MP_EOF;          }
-.               { printToken(Naughty);  return MP_WTF;          }
+<<EOF>>         { printToken(EndOfFile);    return MP_EOF;      }
+.               { printToken(Naughty);      return MP_WTF;      }
 
 %%
 

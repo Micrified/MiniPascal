@@ -21,6 +21,7 @@
 #include "semantics.h"  // Semantic Checking Routines.
 
 /* Variables local to lex.yy.c */
+extern int inDebug;
 extern int yylex();
 extern int yylineno;
 extern char *yytext;
@@ -224,8 +225,30 @@ sign  : MP_ADDOP
  ********************************************************************************
  */
 
+void parseArguments (int argc, char *argv[]) {
+  char *arg;
+
+  while (--argc && *(arg = *++argv) == '-') {
+    switch (*++arg) {
+      case 'd':
+        inDebug = 1; 
+        break;
+      default:
+        fprintf(stderr, "Unknown argument \"-%s\"!\n", arg);
+        exit(EXIT_FAILURE);
+        break;
+    }
+  }
+}
+
 int main(int argc, char *argv[]) {
 
+  // Read program flags
+  if (argc > 1) {
+    parseArguments(argc, argv);
+  }
+
+  // Perform Syntactic + Symantic Analysis.
   yyparse();
   
   return EXIT_SUCCESS;

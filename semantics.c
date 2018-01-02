@@ -16,7 +16,7 @@ static double performOperation (unsigned operator, double a, double b) {
         case MP_MULOP: return a * b;
         case MP_MODOP: return (double)((int)a % (int)b);
     }
-    fprintf(stderr, "Error: performOperation: Unknown operator %u!\n", operator);
+    printError("performOperation: Unknown operator %d\n", operator);
     exit(EXIT_FAILURE);
 }
 
@@ -68,13 +68,13 @@ unsigned resolveTypeClass (const char *identifier,  unsigned class) {
 
     // Verify: IdEntry exists. 
     if ((entry = tableContains(identifier)) == NULL) {
-        fprintf(stderr, "Error: %s is undefined!\n", identifier);
+        printError("\"%s\" is undefined!", identifier);
         exit(EXIT_FAILURE);
     }
 
     // Verify: Token-Type is of expected class.
     if ((entry->tt & class) == 0) {
-        fprintf(stderr, "Error: %s is not of class %u!\n", identifier, class);
+        printError("\"%s\" is of an unexpected type!", identifier);
         exit(EXIT_FAILURE);
     }
 
@@ -92,7 +92,7 @@ exprType resolveArithmeticOperation (unsigned operator, exprType a, exprType b) 
 
     // (*). Verify operands are valid.
     if (!isValidOperand(a.tt) || !isValidOperand(b.tt)) {
-        fprintf(stderr, "Error: Illegal operation between %u and %u!\n", a.tt, b.tt);
+        printError("Operation between incompatible types!");
         exit(EXIT_FAILURE);
     }
 
@@ -102,13 +102,13 @@ exprType resolveArithmeticOperation (unsigned operator, exprType a, exprType b) 
 
     // (1). Throw warning if primitive types mismatch.
     if (isPrimitiveOperand(a.tt) && isPrimitiveOperand(b.tt) && a.tt != b.tt) {
-        fprintf(stderr, "Warning: Mismatching types in operation (%u v %u)!\n", a.tt, b.tt);
+        printWarning("Mismatching types in expression!");
     }
 
     // (2). Check for division by zero. 
     if ((operator == MP_DIVOP || operator == MP_MODOP) && 
         (vp = numberAtIndex(b.vi)) != NULL && (*vp == 0.0)) {
-        fprintf(stderr, "Error: Division-by-zero!\n");
+        printError("Division by zero!");
         exit(EXIT_FAILURE);
     }
 
@@ -129,7 +129,7 @@ exprType resolveArithmeticOperation (unsigned operator, exprType a, exprType b) 
 */
 exprType resolveBooleanOperation (exprType a, exprType b) {
     if (!isValidOperand(a.tt) || !isValidOperand(b.tt)) {
-        fprintf(stderr, "Error: Invalid comparison!\n");
+        printError("Invalid comparison!");
         exit(EXIT_FAILURE);
     }
     return (exprType){.tt = TT_BOOLEAN, .vi = NIL};
