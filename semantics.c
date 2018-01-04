@@ -11,10 +11,20 @@
 /* Performs an operation based on the given lexer token */
 static double performOperation (unsigned operator, double a, double b) {
     switch (operator) {
+
+        // Arithmetic Operators.
         case MP_ADDOP: return a + b;
         case MP_DIVOP: return a / b;
         case MP_MULOP: return a * b;
         case MP_MODOP: return (double)((int)a % (int)b);
+
+        // Boolean Operators.
+        case MP_RELOP_LT: return (a < b);
+        case MP_RELOP_LE: return (a <= b);
+        case MP_RELOP_EQ: return (a == b);
+        case MP_RELOP_GE: return (a >= b);
+        case MP_RELOP_GT: return (a > b);
+        case MP_RELOP_NE: return (a != b);
     }
     printError("performOperation: Unknown operator %d\n", operator);
     exit(EXIT_FAILURE);
@@ -102,7 +112,7 @@ exprType resolveArithmeticOperation (unsigned operator, exprType a, exprType b) 
 
     // (1). Throw warning if primitive types mismatch.
     if (isPrimitiveOperand(a.tt) && isPrimitiveOperand(b.tt) && a.tt != b.tt) {
-        printWarning("Mismatching types in expression!");
+        printWarning("Mismatching types in arithmetic expression!");
     }
 
     // (2). Check for division by zero. 
@@ -126,11 +136,34 @@ exprType resolveArithmeticOperation (unsigned operator, exprType a, exprType b) 
 
 /* Returns resulting exprType for a boolean operation between two exprTypes.
  * 1. If any operand is undefined, an error is thrown.
+ * 2. If operators are both primitives but mismatching, throw warning.
+ * 3. If any operand has no constant value, then result is just type MP_INTEGER.
+ * Results of comparisons are always MP_INTEGER where defined.
 */
-exprType resolveBooleanOperation (exprType a, exprType b) {
+exprType resolveBooleanOperation (unsigned operator, exprType a, exprType b) {
+
+    // (1). Verify operands are valid!
     if (!isValidOperand(a.tt) || !isValidOperand(b.tt)) {
-        printError("Invalid comparison!");
+        printError("Comparision between invalid types!");
         return (exprType){.tt = TT_UNDEFINED, .vi = NIL};
     }
-    return (exprType){.tt = TT_BOOLEAN, .vi = NIL};
+
+    // (*). Reduce types to primitives if necessary.
+    a.tt = reduceValidOperandType(a.tt);
+    b.tt = reduceValidOperandType(b.tt);
+
+    // (2). Throw warning if primitive types mismatch.
+    if (isPrimitiveOperand(a.tt) && isPrimitiveOperand(b.tt) && a.tt != b.tt) {
+        printWarning("Mismatching types in boolean expression!");
+    }
+
+    // (3). Determine resulting constant value.
+    double *avp, *bvp, newValueIndex;
+    if ((avp = numberAtIndex(a.vi)) == NULL || (bvp = numberAtIndex(b.vi)) == NULL) {
+        newValueIndex = NIL;
+    } else {
+        newValueIndex = installNumber(performOperation(operator, *avp, *bvp));
+    }
+
+    return (exprType){.tt = TT_INTEGER, .vi = newValueIndex};
 }

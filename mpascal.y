@@ -53,12 +53,19 @@ int yyerror(char *s) {
 %token MP_THEN
 %token MP_ELSE
 
-// Operator Tokens.
-%token MP_RELOP
+// Arithmetic Operator Tokens.
 %token MP_ADDOP 
 %token MP_MULOP 
 %token MP_DIVOP
 %token MP_MODOP
+
+// Relational Operator Tokens.
+%token MP_RELOP_LT
+%token MP_RELOP_LE
+%token MP_RELOP_EQ
+%token MP_RELOP_GE
+%token MP_RELOP_GT
+%token MP_RELOP_NE
 
 // Primitive Tokens.
 %token MP_ID
@@ -180,38 +187,43 @@ statement : variable MP_ASSIGNOP expression
           | MP_WHILE expression MP_DO statement
           ;
 
-variable  : MP_ID
-          | MP_ID MP_BOPEN expressionList MP_BCLOSE
+variable  : MP_ID                                           
+          | MP_ID MP_BOPEN expressionList MP_BCLOSE         
 
 procedureStatement  : MP_ID
                     | MP_ID MP_POPEN expressionList MP_PCLOSE
                     ;
 
-expressionList  : expression 
-                | expressionList MP_COMMA expression 
+expressionList  : expression                                
+                | expressionList MP_COMMA expression        
                 ;
 
-expression  : simpleExpression                            { $$ = $1; }
-            | simpleExpression MP_RELOP simpleExpression  { $$ = resolveBooleanOperation($1, $3); }
+expression  : simpleExpression                              { $$ = $1; }
+            | simpleExpression MP_RELOP_LT simpleExpression { $$ = resolveBooleanOperation(MP_RELOP_LT, $1, $3); }
+            | simpleExpression MP_RELOP_LE simpleExpression { $$ = resolveBooleanOperation(MP_RELOP_LE, $1, $3); }
+            | simpleExpression MP_RELOP_EQ simpleExpression { $$ = resolveBooleanOperation(MP_RELOP_EQ, $1, $3); }
+            | simpleExpression MP_RELOP_GE simpleExpression { $$ = resolveBooleanOperation(MP_RELOP_GE, $1, $3); }
+            | simpleExpression MP_RELOP_GT simpleExpression { $$ = resolveBooleanOperation(MP_RELOP_GT, $1, $3); }
+            | simpleExpression MP_RELOP_NE simpleExpression { $$ = resolveBooleanOperation(MP_RELOP_NE, $1, $3); }
             ;
 
-simpleExpression  : term                                  { $$ = $1; }
-                  | sign term                             { $$ = $2; }
-                  | simpleExpression MP_ADDOP term        { $$ = resolveArithmeticOperation(MP_ADDOP, $1, $3); }
+simpleExpression  : term                                    { $$ = $1; }
+                  | sign term                               { $$ = $2; }
+                  | simpleExpression MP_ADDOP term          { $$ = resolveArithmeticOperation(MP_ADDOP, $1, $3); }
                   ;
 
-term  : factor                                            { $$ = $1; }
-      | term MP_MULOP factor                              { $$ = resolveArithmeticOperation(MP_MULOP, $1, $3); }
-      | term MP_DIVOP factor                              { $$ = resolveArithmeticOperation(MP_DIVOP, $1, $3); }
-      | term MP_MODOP factor                              { $$ = resolveArithmeticOperation(MP_MODOP, $1, $3); }
+term  : factor                                              { $$ = $1; }
+      | term MP_MULOP factor                                { $$ = resolveArithmeticOperation(MP_MULOP, $1, $3); }
+      | term MP_DIVOP factor                                { $$ = resolveArithmeticOperation(MP_DIVOP, $1, $3); }
+      | term MP_MODOP factor                                { $$ = resolveArithmeticOperation(MP_MODOP, $1, $3); }
       ;
 
-factor  : MP_ID                                           { $$ = (exprType){.tt = getTypeElseInstall(yytext, TT_UNDEFINED), .vi = NIL}; }
-        | MP_ID MP_POPEN expressionList MP_PCLOSE         { $$ = (exprType){.tt = resolveTypeClass(yytext, TC_FUNCTION), .vi = NIL}; }
-        | MP_ID MP_BOPEN expression MP_BCLOSE             { $$ = (exprType){.tt = resolveTypeClass(yytext, TC_ARRAY), .vi = NIL}; }
-        | MP_INTEGER                                      { $$ = (exprType){.tt = TT_INTEGER, .vi = installNumber(atof(yytext))}; }
-        | MP_REAL                                         { $$ = (exprType){.tt = TT_REAL, .vi = installNumber(atof(yytext))}; }
-        | MP_POPEN expression MP_PCLOSE                   { $$ = $2; }
+factor  : MP_ID                                             { $$ = (exprType){.tt = getTypeElseInstall(yytext, TT_UNDEFINED), .vi = NIL}; }
+        | MP_ID MP_POPEN expressionList MP_PCLOSE           { $$ = (exprType){.tt = resolveTypeClass(yytext, TC_FUNCTION), .vi = NIL}; }
+        | MP_ID MP_BOPEN expression MP_BCLOSE               { $$ = (exprType){.tt = resolveTypeClass(yytext, TC_ARRAY), .vi = NIL}; }
+        | MP_INTEGER                                        { $$ = (exprType){.tt = TT_INTEGER, .vi = installNumber(atof(yytext))}; }
+        | MP_REAL                                           { $$ = (exprType){.tt = TT_REAL, .vi = installNumber(atof(yytext))}; }
+        | MP_POPEN expression MP_PCLOSE                     { $$ = $2; }
         ;
 
 sign  : MP_ADDOP
@@ -243,6 +255,10 @@ void parseArguments (int argc, char *argv[]) {
 
 int main(int argc, char *argv[]) {
 
+  // Initialize support structures.
+  initStringTable();
+  initNumberTable();
+
   // Read program flags
   if (argc > 1) {
     parseArguments(argc, argv);
@@ -250,6 +266,11 @@ int main(int argc, char *argv[]) {
 
   // Perform Syntactic + Symantic Analysis.
   yyparse();
+
+  // Free allocate memory.
+  freeNumberTable();
+  freeStringTable();
+  freeSymbolTableEntries();
   
   return EXIT_SUCCESS;
 }

@@ -163,11 +163,18 @@ IdEntry *installEntry (IdEntry entry) {
     return &(symTable[k][level]->entry);
 }
 
-/* Removes all entries in the given level */
-void freeTableLevel (int lvl) {
+/* Frees all allocated entries in the given level */
+void freeTableLevelEntries (int lvl) {
     for (int i = 0; i < SYMTAB_SIZE; i++) {
         freeNode(symTable[i][lvl]);
         symTable[i][lvl] = NULL;
+    }
+}
+
+/* Frees all allocated entries */
+void freeSymbolTableEntries (void) {
+    for (int i = 0; i < SYMTAB_LEVELS; i++) {
+        freeTableLevelEntries(SYMTAB_LEVELS - i - 1);
     }
 }
 
@@ -180,5 +187,6 @@ void printSymbolTables (void) {
         }
      }
 }
+
 
 

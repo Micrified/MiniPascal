@@ -57,12 +57,12 @@ comment         \{[^\}]*\}
 
 ":="            { printToken(Operation);   return MP_ASSIGNOP;  }
 
-"<"             { printToken(Operation);    return MP_RELOP;    }
-"<="            { printToken(Operation);    return MP_RELOP;    }
-"="             { printToken(Operation);    return MP_RELOP;    }
-">="            { printToken(Operation);    return MP_RELOP;    }
-">"             { printToken(Operation);    return MP_RELOP;    }
-"<>"            { printToken(Operation);    return MP_RELOP;    }
+"<"             { printToken(Operation);    return MP_RELOP_LT; }
+"<="            { printToken(Operation);    return MP_RELOP_LE; }
+"="             { printToken(Operation);    return MP_RELOP_EQ; }
+">="            { printToken(Operation);    return MP_RELOP_GE; }
+">"             { printToken(Operation);    return MP_RELOP_GT; }
+"<>"            { printToken(Operation);    return MP_RELOP_NE; }
 
 {addop}         { printToken(Operation);    return MP_ADDOP;    }
 

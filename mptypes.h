@@ -34,9 +34,6 @@
 #define TT_FUNCTION_INTEGER     8
 #define TT_FUNCTION_REAL        9
 
-// Token-Types: Boolean.
-#define TT_BOOLEAN              16
-
 /*
 ********************************************************************************
 *                              Bison Dependencies                              *
@@ -45,8 +42,19 @@
 
 // YYSTYPE: Expression data type.
 typedef struct {
-    unsigned    tt;        // Token-Type.
-    int         vi;        // Value-Index: Index of constant value in numtab.
+    unsigned    tt;         // Token-Type.
+    int         vi;         // Value-Index: Index of constant value in numtab.
 } exprType;
+
+// YYSTYPE: Expression-List data type.
+typedef struct {
+    unsigned    length;     // Length of list.
+    exprType    *list;      // Allocated list.
+} exprListType;
+
+// YYSTYPE: Variable data type.
+typedef exprType varType;
+
+// YYSTYPE: 
 
 #endif

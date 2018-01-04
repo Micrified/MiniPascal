@@ -54,8 +54,11 @@ IdEntry *tableContains (const char *identifier);
 /* Inserts a new IdEntry into the table. Returns pointer to entry. */
 IdEntry *installEntry (IdEntry entry);
 
-/* Removes all entries in the given level */
-void freeTableLevel (int lvl);
+/* Frees all allocated entries in the given level */
+void freeTableLevelEntries (int lvl);
+
+/* Frees all allocated entries */
+void freeSymbolTableEntries (void); 
 
 /* Debug Method: Print state of the symbol tables */
 void printSymbolTables (void);

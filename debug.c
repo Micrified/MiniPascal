@@ -219,4 +219,3 @@ void printError (char *msg, ...) {
     // Print line.
     fprintf(stderr, "\n" C_TAF(BOL, RED, "--> ") "%s\n", lineBuffer);
 }
-

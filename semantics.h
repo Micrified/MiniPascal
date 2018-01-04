@@ -45,7 +45,10 @@ exprType resolveArithmeticOperation (unsigned operator, exprType a, exprType b);
 
 /* Returns resulting exprType for a boolean operation between two exprTypes.
  * 1. If any operand is undefined, an error is thrown.
+ * 2. If operators are both primitives but mismatching, throw warning.
+ * 3. If any operand has no constant value, then result is just type MP_INTEGER.
+ * Results of comparisons are always MP_INTEGER where defined.
 */
-exprType resolveBooleanOperation (exprType a, exprType b);
+exprType resolveBooleanOperation (unsigned operator, exprType a, exprType b);
 
 #endif 
