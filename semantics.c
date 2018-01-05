@@ -31,7 +31,8 @@ static double performOperation (unsigned operator, double a, double b) {
 }
 
 /* Returns nonzero if the given token-type may be used in an arithmetic operation */
-static int isValidOperand (unsigned tt) {
+static int isValidOperand (unsigned tt, unsigned *tp) {
+    *tp = tt;
     return (tt > TT_UNDEFINED && tt <= TT_FUNCTION_REAL);
 }
 
@@ -98,11 +99,12 @@ unsigned resolveTypeClass (const char *identifier,  unsigned class) {
  * 3. If any operand has no constant value, then result is just the type.
  * Results are type-promoted in case of (2). */ 
 exprType resolveArithmeticOperation (unsigned operator, exprType a, exprType b) {
+    unsigned t;
     double *vp;
 
     // (*). Verify operands are valid.
-    if (!isValidOperand(a.tt) || !isValidOperand(b.tt)) {
-        printError("Operation between incompatible types!");
+    if (!isValidOperand(a.tt, &t) || !isValidOperand(b.tt, &t)) {
+        printError("Arithmetic operation is undefined for type: \"%s\"!\n", tokenTypeName(t));
         return (exprType){.tt = TT_UNDEFINED, .vi = NIL};
     }
 
@@ -141,10 +143,11 @@ exprType resolveArithmeticOperation (unsigned operator, exprType a, exprType b) 
  * Results of comparisons are always MP_INTEGER where defined.
 */
 exprType resolveBooleanOperation (unsigned operator, exprType a, exprType b) {
+    unsigned t;
 
     // (1). Verify operands are valid!
-    if (!isValidOperand(a.tt) || !isValidOperand(b.tt)) {
-        printError("Comparision between invalid types!");
+    if (!isValidOperand(a.tt, &t) || !isValidOperand(b.tt, &t)) {
+        printError("Boolean operation is undefined for type: \"%s\"!\n", tokenTypeName(t));
         return (exprType){.tt = TT_UNDEFINED, .vi = NIL};
     }
 

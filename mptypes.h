@@ -1,6 +1,9 @@
 #if !defined(MPTYPES_H)
 #define MPTYPES_H
 
+#include <stdio.h>
+#include <stdlib.h>
+
 /*
     ***************************************************************************
     *                   Types used in MiniPascal Compiler                     *
@@ -56,5 +59,40 @@ typedef struct {
 typedef exprType varType;
 
 // YYSTYPE: 
+
+
+/*
+********************************************************************************
+*                           Function Prototypes: Utility                       *
+********************************************************************************
+*/
+
+/* Returns a string associated with the given token-type */
+const char *tokenTypeName (unsigned tt);
+
+/*
+********************************************************************************
+*                           Function Prototypes: exprType                      *
+********************************************************************************
+*/
+
+/* Initializes a new exprType with given token-type (tt) and value-index (vi) */
+exprType initExprType (unsigned tt, unsigned vi);
+
+/*
+********************************************************************************
+*                        Function Prototypes: exprListType                     *
+********************************************************************************
+*/
+
+/* Initializes a new exprListType */
+exprListType initExprListType (void);
+
+/* Frees allocated memory in an exprListType */
+void freeExprList(exprListType exprList);
+
+/* Allocates a copy of the given exprType and places it in returned exprList list. */
+exprListType insertExprList (exprType expr, exprListType exprList);
+
 
 #endif

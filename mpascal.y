@@ -114,11 +114,13 @@ int yyerror(char *s) {
 
 // Bison YYSTYPE Declarations.
 %union {
-  exprType expr;
+  exprType      expr;
+  exprListType  exprList;
 }
 
 // Nonterminal return type rules.
-%type <expr> factor term simpleExpression expression
+%type <expr> factor term simpleExpression expression variable
+%type <exprList> expressionList
 
 // Starting Grammar Rule.
 %start program
@@ -187,15 +189,15 @@ statement : variable MP_ASSIGNOP expression
           | MP_WHILE expression MP_DO statement
           ;
 
-variable  : MP_ID                                           
-          | MP_ID MP_BOPEN expressionList MP_BCLOSE         
+variable  : MP_ID                                           { $$ = initExprType(getTypeElseInstall(yytext, TT_UNDEFINED), NIL); }                                                                                      
+          | MP_ID MP_BOPEN expression MP_BCLOSE             { $$ = initExprType(resolveTypeClass(yytext, TC_ARRAY), NIL); }                  
 
-procedureStatement  : MP_ID
+procedureStatement  : MP_ID                                 { $$ = }
                     | MP_ID MP_POPEN expressionList MP_PCLOSE
                     ;
 
-expressionList  : expression                                
-                | expressionList MP_COMMA expression        
+expressionList  : expression                                { $$ = insertExprList($1, initExprListType()); }                                                              
+                | expressionList MP_COMMA expression        { $$ = insertExprList($3, $1); }                
                 ;
 
 expression  : simpleExpression                              { $$ = $1; }
@@ -218,11 +220,11 @@ term  : factor                                              { $$ = $1; }
       | term MP_MODOP factor                                { $$ = resolveArithmeticOperation(MP_MODOP, $1, $3); }
       ;
 
-factor  : MP_ID                                             { $$ = (exprType){.tt = getTypeElseInstall(yytext, TT_UNDEFINED), .vi = NIL}; }
-        | MP_ID MP_POPEN expressionList MP_PCLOSE           { $$ = (exprType){.tt = resolveTypeClass(yytext, TC_FUNCTION), .vi = NIL}; }
-        | MP_ID MP_BOPEN expression MP_BCLOSE               { $$ = (exprType){.tt = resolveTypeClass(yytext, TC_ARRAY), .vi = NIL}; }
-        | MP_INTEGER                                        { $$ = (exprType){.tt = TT_INTEGER, .vi = installNumber(atof(yytext))}; }
-        | MP_REAL                                           { $$ = (exprType){.tt = TT_REAL, .vi = installNumber(atof(yytext))}; }
+factor  : MP_ID                                             { $$ = initExprType(getTypeElseInstall(yytext, TT_UNDEFINED), NIL); }
+        | MP_ID MP_POPEN expressionList MP_PCLOSE           { $$ = initExprType(resolveTypeClass(yytext, TC_FUNCTION), NIL); }
+        | MP_ID MP_BOPEN expression MP_BCLOSE               { $$ = initExprType(resolveTypeClass(yytext, TC_ARRAY), NIL); }
+        | MP_INTEGER                                        { $$ = initExprType(TT_INTEGER, installNumber(atof(yytext))); }
+        | MP_REAL                                           { $$ = initExprType(TT_REAL, installNumber(atof(yytext))); }
         | MP_POPEN expression MP_PCLOSE                     { $$ = $2; }
         ;
 

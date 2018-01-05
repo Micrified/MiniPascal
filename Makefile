@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS=-O2 -Wall -Wunused-function 
-all: scanner parser debug.h debug.c colors.h mptypes.h strtab.h numtab.h symtab.h semantics.h 
-	${CC} ${CFLAGS} lex.yy.c mpascal.tab.c strtab.c numtab.c symtab.c semantics.c -ll -lm
+all: scanner parser debug.h debug.c colors.h mptypes.h mptypes.c strtab.h numtab.h symtab.h semantics.h 
+	${CC} ${CFLAGS} lex.yy.c mpascal.tab.c strtab.c numtab.c symtab.c mptypes.c semantics.c -ll -lm
 
 scanner: mpascal.lex
 	flex mpascal.lex
