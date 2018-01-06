@@ -43,6 +43,9 @@
 ********************************************************************************
 */
 
+// YYSType: Identifier data type.
+typedef unsigned idType;         // Index of identifier in string table.
+
 // YYSTYPE: Expression data type.
 typedef struct {
     unsigned    tt;         // Token-Type.
@@ -56,13 +59,10 @@ typedef struct {
 } exprListType;
 
 // YYSTYPE: Variable data type.
-typedef void * varType;     // Symbol-Pointer (IdEntry *).
-
-// YYSType: Identifier data type.
-typedef unsigned idType;         // Index of identifier in string table.
-
-
-// YYSTYPE: 
+typedef struct {
+    unsigned tt;            // Token-Type.
+    unsigned id;            // Identifier-Index: Index of the identifier in strtab.
+} varType;
 
 
 /*
@@ -100,6 +100,15 @@ void freeExprList(exprListType exprList);
 
 /* Allocates a copy of the given exprType and places it in returned exprList list. */
 exprListType insertExprList (exprType expr, exprListType exprList);
+
+/*
+********************************************************************************
+*                        Function Prototypes: varType                          *
+********************************************************************************
+*/
+
+/* Initializes a new varType with the given token-type (tt) and identifier-index (id) */
+varType initVarType (unsigned tt, unsigned id);
 
 
 #endif

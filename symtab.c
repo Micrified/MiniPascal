@@ -140,6 +140,13 @@ void setLevel (unsigned lvl) {
 
 /* Returns pointer to IdEntry if in table. Else NULL */
 IdEntry *tableContains (const char *identifier) {
+
+    // Verify identifier is non-NULL.
+    if (identifier == NULL) {
+        fprintf(stderr, "Error: tableContains: NULL identifier!\n");
+        exit(EXIT_FAILURE);
+    }
+
     unsigned k = hash(identifier);
     Node *lp = listContains(identifier, symTable[k][level]);
 

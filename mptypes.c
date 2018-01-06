@@ -68,3 +68,14 @@ exprListType insertExprList (exprType expr, exprListType exprList) {
 
     return exprList;
 }
+
+/*
+********************************************************************************
+*                               Functions: varType                             *
+********************************************************************************
+*/
+
+/* Initializes a new varType with the given token-type (tt) and identifier-index (id) */
+varType initVarType (unsigned tt, unsigned id) {
+    return (varType){.tt = tt, .id = id};
+}

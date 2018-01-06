@@ -52,17 +52,9 @@ static unsigned reduceValidOperandType (unsigned tt) {
 
 /*
 ********************************************************************************
-*                             exprType Functions                               *
+*                              idType Functions                                *
 ********************************************************************************
 */
-
-/* Throws an error if the exprType token-type doesn't match type `tt` */
-void requireExprType(unsigned tt, exprType expr) {
-    if (expr.tt != tt) {
-        printError("Expected %s, but got %s instead!", 
-        tokenTypeName(tt), tokenTypeName(expr.tt));
-    }
-}
 
 /* Returns token type of identifier. If no entry, one is made with type `tt`. */
 unsigned getTypeElseInstall (const char *identifier, unsigned tt) {
@@ -74,6 +66,58 @@ unsigned getTypeElseInstall (const char *identifier, unsigned tt) {
     }
 
     return entry->tt;
+}
+
+/* Returns token-type of identifier. If no entry, an error is thrown. */
+unsigned getTypeElseError (const char *identifier) {
+    IdEntry *entry;
+
+    // Check if entry exists, otherwise throw error.
+    if ((entry = tableContains(identifier)) == NULL) {
+        printError("\"%s\" is undefined!", identifier);
+        return TT_UNDEFINED;
+    }
+
+    return entry->tt;
+}
+
+/* Throws an error if the identifier entry is not of the expected class */
+void requireIdClass (const char *identifier, unsigned class) {
+    IdEntry *entry;
+
+    // (*). Check if entry exists, otherwise throw error.
+    if ((entry = tableContains(identifier)) == NULL) {
+        printError("\"%s\" is undefined!");
+    }
+
+    // (*). Verify token-type is of expected class.
+    if ((entry->tt & class) == 0) {
+        printError("\"%s\" is not of expected type-class \"%s\"!", 
+        tokenTypeName(entry->tt), 
+        tokenClassName(class));
+    }
+}
+
+/*
+********************************************************************************
+*                             exprType Functions                               *
+********************************************************************************
+*/
+
+/* Throws an error if the exprType token-type doesn't match type `tt` */
+void requireExprType(unsigned tt, exprType expr) {
+    if (expr.tt != tt) {
+        printError("Expected type \"%s\", but got type \"%s\" instead!", 
+        tokenTypeName(tt), tokenTypeName(expr.tt));
+    }
+}
+
+/* Throws an error if the exprType token-type isn't of TT_INTEGER for guards */
+void verifyGuardExpr (exprType expr) {
+    if (expr.tt != TT_INTEGER) {
+        printError("Guard expression has type \"%s\". Only type \"%s\" allowed!", 
+        tokenTypeName(expr.tt), tokenTypeName(TT_INTEGER));
+    }
 }
 
 /* Returns primitive token-type for expected type the given class.
@@ -92,7 +136,7 @@ unsigned resolveTypeClass (const char *identifier,  unsigned class) {
 
     // Verify: Token-Type is of expected class.
     if ((entry->tt & class) == 0) {
-        printError("\"%s\" is of an unexpected type!", identifier);
+        printError("\"%s\" is not of expected type-class \"%s\"!", identifier, tokenClassName(class));
         return TT_UNDEFINED;
     }
 
@@ -180,41 +224,26 @@ exprType resolveBooleanOperation (unsigned operator, exprType a, exprType b) {
 
 /*
 ********************************************************************************
-*                              varType Functions                               *
+*                                varType Functions                             *
 ********************************************************************************
 */
 
-/* Returns pointer to symbol table entry (IdEntry *) of identifier. If no entry, 
- * one is made with type `tt`. 
-*/
-void *getSymbolElseInstall(const char *identifier, unsigned tt) {
-    IdEntry *entry;
+/* Resolves an assignment of an exprType to an identifier.
+ * If the varType identifier has non-primitive token-type, an error is thrown.
+ * If the exprType token-type doesn't match the identifier's token-type,
+ *  an error is thrown.
+ */
+void resolveAssignment (varType var, exprType expr) {
 
-    if ((entry = tableContains(identifier)) == NULL) {
-        entry = installEntry(newIDEntry(installId(identifier), tt));
+    // (*). Verify identifier token-type is assignable.
+    if (!isPrimitiveOperand(var.tt)) {
+        printError("\"%s\" of type \"%s\" is not assignable!",
+        identifierAtIndex(var.id), tokenTypeName(var.tt));
     }
 
-    return (void *)entry;
-}
-
-/* Returns pointer to symbol table entry (IdEntry *) of identifier. 
- * If token-type doesn't exist or belong to existing class, an error is thrown.
-*/
-void *getSymbolExpectingType(const char *identifier, unsigned class) {
-    IdEntry *entry;
-
-    // (*). Verify entry exists.
-    if ((entry = tableContains(identifier)) == NULL) {
-        printError("%s is undefined!", identifier);
-        
-        // Either exit with error, or install with undefined value.
-        return (void *)installEntry(newIDEntry(installId(identifier), TT_UNDEFINED));
+    // (*). Verify exprType token-type matches.
+    if (var.tt != expr.tt) {
+        printError("\"%s\" of type \"%s\" may not be assigned a value of type \"%s\"!", 
+        identifierAtIndex(var.id), tokenTypeName(var.tt), tokenTypeName(expr.tt));
     }
-
-    // (*). Verify entry token-type is of expected class.
-    if ((entry->tt & class) == 0) {
-        printError("%s is not of class %s!", tokenTypeName(entry->tt), tokenClassName(class));
-    }
-
-    return (void *)entry;
 }

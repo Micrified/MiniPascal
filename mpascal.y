@@ -114,14 +114,14 @@ int yyerror(char *s) {
 
 // Bison YYSTYPE Declarations.
 %union {
+  idType        id;
   exprType      expr;
   exprListType  exprList;
   varType       var;
-  idType        id;
 }
 
 // Nonterminal return type rules.
-%type <id> identifier
+%type <id> identifier 
 %type <expr> factor term simpleExpression expression 
 %type <exprList> expressionList
 %type <var> variable
@@ -186,15 +186,15 @@ statementList : statement
               | statementList MP_SCOLON statement
               ;
 
-statement : variable MP_ASSIGNOP expression                 
+statement : variable MP_ASSIGNOP expression                       { resolveAssignment($1, $3); }                 
           | procedureStatement
           | compoundStatement
-          | MP_IF expression MP_THEN statement MP_ELSE statement
-          | MP_WHILE expression MP_DO statement             
+          | MP_IF expression MP_THEN statement MP_ELSE statement  { verifyGuardExpr($2); }
+          | MP_WHILE expression MP_DO statement                   { verifyGuardExpr($2); }             
           ;
 
-variable  : identifier                                           { $$ = getSymbolElseInstall(identifierAtIndex($1), TT_UNDEFINED); }                                                                                      
-          | identifier MP_BOPEN expression MP_BCLOSE { requireExprType(TT_INTEGER, $3); $$ = getSymbolExpectingType(identifierAtIndex($1), TC_ARRAY); }                  
+variable  : identifier                                            { $$ = initVarType(getTypeElseError(identifierAtIndex($1)), $1); }                                                                                      
+          | identifier MP_BOPEN expression MP_BCLOSE              { requireExprType(TT_INTEGER, $3); $$ = initVarType(resolveTypeClass(identifierAtIndex($1), TC_ARRAY), $1); }                  
 
 procedureStatement  : identifier                                 
                     | identifier MP_POPEN expressionList MP_PCLOSE
