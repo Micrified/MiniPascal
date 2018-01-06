@@ -11,16 +11,21 @@
 
 /*
 ********************************************************************************
+*                              General Prototypes                              *
+********************************************************************************
+*/
+
+
+/*
+********************************************************************************
 *                              ExprType Prototypes                             *
 ********************************************************************************
 */
 
-// TODO
-// 1. Rewrite routines in semantics.h
-// 2. Compile for expressions.
-// 3. Test run.
+/* Throws an error if the exprType token-type doesn't match type `tt` */
+void requireExprType(unsigned tt, exprType expr);
 
-/* Returns token type of identifier. If no entry, one is made with type `tt`. */
+/* Returns token-type of identifier. If no entry, one is made with type `tt`. */
 unsigned getTypeElseInstall (const char *identifier, unsigned tt);
 
 /* Returns primitive token-type for expected type the given class.
@@ -50,5 +55,21 @@ exprType resolveArithmeticOperation (unsigned operator, exprType a, exprType b);
  * Results of comparisons are always MP_INTEGER where defined.
 */
 exprType resolveBooleanOperation (unsigned operator, exprType a, exprType b);
+
+/*
+********************************************************************************
+*                               varType Prototypes                             *
+********************************************************************************
+*/
+
+/* Returns pointer to symbol table entry (IdEntry *) of identifier. If no entry, 
+ * one is made with type `tt`. 
+*/
+void *getSymbolElseInstall(const char *identifier, unsigned tt);
+
+/* Returns pointer to symbol table entry (IdEntry *) of identifier. 
+ * If token-type doesn't exist or belong to existing class, an error is thrown.
+*/
+void *getSymbolExpectingType(const char *identifier, unsigned class);
 
 #endif 

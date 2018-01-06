@@ -52,10 +52,17 @@ static unsigned reduceValidOperandType (unsigned tt) {
 
 /*
 ********************************************************************************
-*                                 Functions                                    *
+*                             exprType Functions                               *
 ********************************************************************************
 */
 
+/* Throws an error if the exprType token-type doesn't match type `tt` */
+void requireExprType(unsigned tt, exprType expr) {
+    if (expr.tt != tt) {
+        printError("Expected %s, but got %s instead!", 
+        tokenTypeName(tt), tokenTypeName(expr.tt));
+    }
+}
 
 /* Returns token type of identifier. If no entry, one is made with type `tt`. */
 unsigned getTypeElseInstall (const char *identifier, unsigned tt) {
@@ -169,4 +176,45 @@ exprType resolveBooleanOperation (unsigned operator, exprType a, exprType b) {
     }
 
     return (exprType){.tt = TT_INTEGER, .vi = newValueIndex};
+}
+
+/*
+********************************************************************************
+*                              varType Functions                               *
+********************************************************************************
+*/
+
+/* Returns pointer to symbol table entry (IdEntry *) of identifier. If no entry, 
+ * one is made with type `tt`. 
+*/
+void *getSymbolElseInstall(const char *identifier, unsigned tt) {
+    IdEntry *entry;
+
+    if ((entry = tableContains(identifier)) == NULL) {
+        entry = installEntry(newIDEntry(installId(identifier), tt));
+    }
+
+    return (void *)entry;
+}
+
+/* Returns pointer to symbol table entry (IdEntry *) of identifier. 
+ * If token-type doesn't exist or belong to existing class, an error is thrown.
+*/
+void *getSymbolExpectingType(const char *identifier, unsigned class) {
+    IdEntry *entry;
+
+    // (*). Verify entry exists.
+    if ((entry = tableContains(identifier)) == NULL) {
+        printError("%s is undefined!", identifier);
+        
+        // Either exit with error, or install with undefined value.
+        return (void *)installEntry(newIDEntry(installId(identifier), TT_UNDEFINED));
+    }
+
+    // (*). Verify entry token-type is of expected class.
+    if ((entry->tt & class) == 0) {
+        printError("%s is not of class %s!", tokenTypeName(entry->tt), tokenClassName(class));
+    }
+
+    return (void *)entry;
 }

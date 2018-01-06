@@ -56,7 +56,11 @@ typedef struct {
 } exprListType;
 
 // YYSTYPE: Variable data type.
-typedef exprType varType;
+typedef void * varType;     // Symbol-Pointer (IdEntry *).
+
+// YYSType: Identifier data type.
+typedef unsigned idType;         // Index of identifier in string table.
+
 
 // YYSTYPE: 
 
@@ -69,6 +73,9 @@ typedef exprType varType;
 
 /* Returns a string associated with the given token-type */
 const char *tokenTypeName (unsigned tt);
+
+/* Returns a string associated with the given token-class */
+const char *tokenClassName (unsigned tc);
 
 /*
 ********************************************************************************

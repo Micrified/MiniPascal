@@ -116,11 +116,15 @@ int yyerror(char *s) {
 %union {
   exprType      expr;
   exprListType  exprList;
+  varType       var;
+  idType        id;
 }
 
 // Nonterminal return type rules.
-%type <expr> factor term simpleExpression expression variable
+%type <id> identifier
+%type <expr> factor term simpleExpression expression 
 %type <exprList> expressionList
+%type <var> variable
 
 // Starting Grammar Rule.
 %start program
@@ -182,18 +186,18 @@ statementList : statement
               | statementList MP_SCOLON statement
               ;
 
-statement : variable MP_ASSIGNOP expression
+statement : variable MP_ASSIGNOP expression                 
           | procedureStatement
           | compoundStatement
           | MP_IF expression MP_THEN statement MP_ELSE statement
-          | MP_WHILE expression MP_DO statement
+          | MP_WHILE expression MP_DO statement             
           ;
 
-variable  : MP_ID                                           { $$ = initExprType(getTypeElseInstall(yytext, TT_UNDEFINED), NIL); }                                                                                      
-          | MP_ID MP_BOPEN expression MP_BCLOSE             { $$ = initExprType(resolveTypeClass(yytext, TC_ARRAY), NIL); }                  
+variable  : identifier                                           { $$ = getSymbolElseInstall(identifierAtIndex($1), TT_UNDEFINED); }                                                                                      
+          | identifier MP_BOPEN expression MP_BCLOSE { requireExprType(TT_INTEGER, $3); $$ = getSymbolExpectingType(identifierAtIndex($1), TC_ARRAY); }                  
 
-procedureStatement  : MP_ID                                 { $$ = }
-                    | MP_ID MP_POPEN expressionList MP_PCLOSE
+procedureStatement  : identifier                                 
+                    | identifier MP_POPEN expressionList MP_PCLOSE
                     ;
 
 expressionList  : expression                                { $$ = insertExprList($1, initExprListType()); }                                                              
@@ -220,16 +224,19 @@ term  : factor                                              { $$ = $1; }
       | term MP_MODOP factor                                { $$ = resolveArithmeticOperation(MP_MODOP, $1, $3); }
       ;
 
-factor  : MP_ID                                             { $$ = initExprType(getTypeElseInstall(yytext, TT_UNDEFINED), NIL); }
-        | MP_ID MP_POPEN expressionList MP_PCLOSE           { $$ = initExprType(resolveTypeClass(yytext, TC_FUNCTION), NIL); }
-        | MP_ID MP_BOPEN expression MP_BCLOSE               { $$ = initExprType(resolveTypeClass(yytext, TC_ARRAY), NIL); }
+factor  : identifier                                        { $$ = initExprType(getTypeElseInstall(identifierAtIndex($1), TT_UNDEFINED), NIL); }
+        | identifier MP_POPEN expressionList MP_PCLOSE      { $$ = initExprType(resolveTypeClass(identifierAtIndex($1), TC_FUNCTION), NIL); }
+        | identifier MP_BOPEN expression MP_BCLOSE          { requireExprType(TT_INTEGER, $3); $$ = initExprType(resolveTypeClass(identifierAtIndex($1), TC_ARRAY), NIL); } 
         | MP_INTEGER                                        { $$ = initExprType(TT_INTEGER, installNumber(atof(yytext))); }
         | MP_REAL                                           { $$ = initExprType(TT_REAL, installNumber(atof(yytext))); }
         | MP_POPEN expression MP_PCLOSE                     { $$ = $2; }
         ;
 
+identifier : MP_ID { $$ = installId(yytext); }
+
 sign  : MP_ADDOP
       ;
+
 
 %%
 

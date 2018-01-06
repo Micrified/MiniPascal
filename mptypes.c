@@ -17,7 +17,16 @@ const char *tokenTypeName (unsigned tt) {
         case TT_FUNCTION_INTEGER:   return "Integer()";
         case TT_FUNCTION_REAL:      return "Real()";
     }
-    return "(?)";
+    return "(Unknown Token-Type)";
+}
+
+/* Returns a string associated with the given token-class */
+const char *tokenClassName (unsigned tc) {
+    switch (tc) {
+        case TC_ARRAY:              return "Array";
+        case TC_FUNCTION:           return "Function";
+    }
+    return "(Unknown Token-Class)";
 }
 
 /*
