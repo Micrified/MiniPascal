@@ -31,7 +31,8 @@ static double performOperation (unsigned operator, double a, double b) {
 }
 
 /* Returns nonzero if the given token-type may be used in an arithmetic operation */
-static int isValidOperand (unsigned tt) {
+static int isValidOperand (unsigned tt, unsigned *tp) {
+    *tp = tt;
     return (tt > TT_UNDEFINED && tt <= TT_FUNCTION_REAL);
 }
 
@@ -51,10 +52,9 @@ static unsigned reduceValidOperandType (unsigned tt) {
 
 /*
 ********************************************************************************
-*                                 Functions                                    *
+*                              idType Functions                                *
 ********************************************************************************
 */
-
 
 /* Returns token type of identifier. If no entry, one is made with type `tt`. */
 unsigned getTypeElseInstall (const char *identifier, unsigned tt) {
@@ -66,6 +66,58 @@ unsigned getTypeElseInstall (const char *identifier, unsigned tt) {
     }
 
     return entry->tt;
+}
+
+/* Returns token-type of identifier. If no entry, an error is thrown. */
+unsigned getTypeElseError (const char *identifier) {
+    IdEntry *entry;
+
+    // Check if entry exists, otherwise throw error.
+    if ((entry = tableContains(identifier)) == NULL) {
+        printError("\"%s\" is undefined!", identifier);
+        return TT_UNDEFINED;
+    }
+
+    return entry->tt;
+}
+
+/* Throws an error if the identifier entry is not of the expected class */
+void requireIdClass (const char *identifier, unsigned class) {
+    IdEntry *entry;
+
+    // (*). Check if entry exists, otherwise throw error.
+    if ((entry = tableContains(identifier)) == NULL) {
+        printError("\"%s\" is undefined!");
+    }
+
+    // (*). Verify token-type is of expected class.
+    if ((entry->tt & class) == 0) {
+        printError("\"%s\" is not of expected type-class \"%s\"!", 
+        tokenTypeName(entry->tt), 
+        tokenClassName(class));
+    }
+}
+
+/*
+********************************************************************************
+*                             exprType Functions                               *
+********************************************************************************
+*/
+
+/* Throws an error if the exprType token-type doesn't match type `tt` */
+void requireExprType(unsigned tt, exprType expr) {
+    if (expr.tt != tt) {
+        printError("Expected type \"%s\", but got type \"%s\" instead!", 
+        tokenTypeName(tt), tokenTypeName(expr.tt));
+    }
+}
+
+/* Throws an error if the exprType token-type isn't of TT_INTEGER for guards */
+void verifyGuardExpr (exprType expr) {
+    if (expr.tt != TT_INTEGER) {
+        printError("Guard expression has type \"%s\". Only type \"%s\" allowed!", 
+        tokenTypeName(expr.tt), tokenTypeName(TT_INTEGER));
+    }
 }
 
 /* Returns primitive token-type for expected type the given class.
@@ -84,7 +136,7 @@ unsigned resolveTypeClass (const char *identifier,  unsigned class) {
 
     // Verify: Token-Type is of expected class.
     if ((entry->tt & class) == 0) {
-        printError("\"%s\" is of an unexpected type!", identifier);
+        printError("\"%s\" is not of expected type-class \"%s\"!", identifier, tokenClassName(class));
         return TT_UNDEFINED;
     }
 
@@ -98,11 +150,12 @@ unsigned resolveTypeClass (const char *identifier,  unsigned class) {
  * 3. If any operand has no constant value, then result is just the type.
  * Results are type-promoted in case of (2). */ 
 exprType resolveArithmeticOperation (unsigned operator, exprType a, exprType b) {
+    unsigned t;
     double *vp;
 
     // (*). Verify operands are valid.
-    if (!isValidOperand(a.tt) || !isValidOperand(b.tt)) {
-        printError("Operation between incompatible types!");
+    if (!isValidOperand(a.tt, &t) || !isValidOperand(b.tt, &t)) {
+        printError("Arithmetic operation is undefined for type: \"%s\"!\n", tokenTypeName(t));
         return (exprType){.tt = TT_UNDEFINED, .vi = NIL};
     }
 
@@ -141,10 +194,11 @@ exprType resolveArithmeticOperation (unsigned operator, exprType a, exprType b) 
  * Results of comparisons are always MP_INTEGER where defined.
 */
 exprType resolveBooleanOperation (unsigned operator, exprType a, exprType b) {
+    unsigned t;
 
     // (1). Verify operands are valid!
-    if (!isValidOperand(a.tt) || !isValidOperand(b.tt)) {
-        printError("Comparision between invalid types!");
+    if (!isValidOperand(a.tt, &t) || !isValidOperand(b.tt, &t)) {
+        printError("Boolean operation is undefined for type: \"%s\"!\n", tokenTypeName(t));
         return (exprType){.tt = TT_UNDEFINED, .vi = NIL};
     }
 
@@ -166,4 +220,30 @@ exprType resolveBooleanOperation (unsigned operator, exprType a, exprType b) {
     }
 
     return (exprType){.tt = TT_INTEGER, .vi = newValueIndex};
+}
+
+/*
+********************************************************************************
+*                                varType Functions                             *
+********************************************************************************
+*/
+
+/* Resolves an assignment of an exprType to an identifier.
+ * If the varType identifier has non-primitive token-type, an error is thrown.
+ * If the exprType token-type doesn't match the identifier's token-type,
+ *  an error is thrown.
+ */
+void resolveAssignment (varType var, exprType expr) {
+
+    // (*). Verify identifier token-type is assignable.
+    if (!isPrimitiveOperand(var.tt)) {
+        printError("\"%s\" of type \"%s\" is not assignable!",
+        identifierAtIndex(var.id), tokenTypeName(var.tt));
+    }
+
+    // (*). Verify exprType token-type matches.
+    if (var.tt != expr.tt) {
+        printError("\"%s\" of type \"%s\" may not be assigned a value of type \"%s\"!", 
+        identifierAtIndex(var.id), tokenTypeName(var.tt), tokenTypeName(expr.tt));
+    }
 }

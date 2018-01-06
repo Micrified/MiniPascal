@@ -11,17 +11,37 @@
 
 /*
 ********************************************************************************
-*                               ExprType Routines                              *
+*                              General Prototypes                              *
 ********************************************************************************
 */
 
-// TODO
-// 1. Rewrite routines in semantics.h
-// 2. Compile for expressions.
-// 3. Test run.
 
-/* Returns token type of identifier. If no entry, one is made with type `tt`. */
+/*
+********************************************************************************
+*                               idType Prototypes                              *
+********************************************************************************
+*/
+
+/* Returns token-type of identifier. If no entry, one is made with type `tt`. */
 unsigned getTypeElseInstall (const char *identifier, unsigned tt);
+
+/* Returns token-type of identifier. If no entry, an error is thrown */
+unsigned getTypeElseError (const char *identifier);
+
+/* Throws an error if the identifier entry is not of the expected class */
+void requireIdClass (const char *identifier, unsigned class);
+
+/*
+********************************************************************************
+*                              exprType Prototypes                             *
+********************************************************************************
+*/
+
+/* Throws an error if the exprType token-type doesn't match type `tt` */
+void requireExprType(unsigned tt, exprType expr);
+
+/* Throws an error if the exprType token-type isn't of TT_INTEGER for guards */
+void verifyGuardExpr (exprType expr);
 
 /* Returns primitive token-type for expected type the given class.
  * 1. Throws undefined-type error if no IdEntry exists for given identifier.
@@ -29,12 +49,6 @@ unsigned getTypeElseInstall (const char *identifier, unsigned tt);
  * Resolves class to primitive token-type (integer or real).
 */
 unsigned resolveTypeClass (const char *identifier,  unsigned class);
-
-/* Resolves operation between two exprTypes. Returns resulting exprType.
- * 1. If `operator` involves divison, raises error if `b` is primitive and zero.
- * 2. Produces a warning if operands are mismatching primitive types.
- * 3. Promotes result if operands are mismatched.
-*/
 
 /* Returns resulting exprType of an arithmetic operation between two exprTypes. 
  * 1. If operator involves division, throw div-zero-error if 'b' is zero.
@@ -50,5 +64,19 @@ exprType resolveArithmeticOperation (unsigned operator, exprType a, exprType b);
  * Results of comparisons are always MP_INTEGER where defined.
 */
 exprType resolveBooleanOperation (unsigned operator, exprType a, exprType b);
+
+/*
+********************************************************************************
+*                               varType Prototypes                             *
+********************************************************************************
+*/
+
+/* Resolves an assignment of an exprType to an identifier.
+ * If the varType identifier has token-type undefined, an error is thrown.
+ * If the exprType token-type doesn't match the identifier's token-type,
+ *  an error is thrown.
+ */
+void resolveAssignment (varType var, exprType expr);
+
 
 #endif 

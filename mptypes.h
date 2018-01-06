@@ -1,6 +1,9 @@
 #if !defined(MPTYPES_H)
 #define MPTYPES_H
 
+#include <stdio.h>
+#include <stdlib.h>
+
 /*
     ***************************************************************************
     *                   Types used in MiniPascal Compiler                     *
@@ -40,6 +43,9 @@
 ********************************************************************************
 */
 
+// YYSType: Identifier data type.
+typedef unsigned idType;         // Index of identifier in string table.
+
 // YYSTYPE: Expression data type.
 typedef struct {
     unsigned    tt;         // Token-Type.
@@ -53,8 +59,56 @@ typedef struct {
 } exprListType;
 
 // YYSTYPE: Variable data type.
-typedef exprType varType;
+typedef struct {
+    unsigned tt;            // Token-Type.
+    unsigned id;            // Identifier-Index: Index of the identifier in strtab.
+} varType;
 
-// YYSTYPE: 
+
+/*
+********************************************************************************
+*                           Function Prototypes: Utility                       *
+********************************************************************************
+*/
+
+/* Returns a string associated with the given token-type */
+const char *tokenTypeName (unsigned tt);
+
+/* Returns a string associated with the given token-class */
+const char *tokenClassName (unsigned tc);
+
+/*
+********************************************************************************
+*                           Function Prototypes: exprType                      *
+********************************************************************************
+*/
+
+/* Initializes a new exprType with given token-type (tt) and value-index (vi) */
+exprType initExprType (unsigned tt, unsigned vi);
+
+/*
+********************************************************************************
+*                        Function Prototypes: exprListType                     *
+********************************************************************************
+*/
+
+/* Initializes a new exprListType */
+exprListType initExprListType (void);
+
+/* Frees allocated memory in an exprListType */
+void freeExprList(exprListType exprList);
+
+/* Allocates a copy of the given exprType and places it in returned exprList list. */
+exprListType insertExprList (exprType expr, exprListType exprList);
+
+/*
+********************************************************************************
+*                        Function Prototypes: varType                          *
+********************************************************************************
+*/
+
+/* Initializes a new varType with the given token-type (tt) and identifier-index (id) */
+varType initVarType (unsigned tt, unsigned id);
+
 
 #endif

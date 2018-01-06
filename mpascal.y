@@ -114,11 +114,17 @@ int yyerror(char *s) {
 
 // Bison YYSTYPE Declarations.
 %union {
-  exprType expr;
+  idType        id;
+  exprType      expr;
+  exprListType  exprList;
+  varType       var;
 }
 
 // Nonterminal return type rules.
-%type <expr> factor term simpleExpression expression
+%type <id> identifier 
+%type <expr> factor term simpleExpression expression 
+%type <exprList> expressionList
+%type <var> variable
 
 // Starting Grammar Rule.
 %start program
@@ -180,22 +186,22 @@ statementList : statement
               | statementList MP_SCOLON statement
               ;
 
-statement : variable MP_ASSIGNOP expression
+statement : variable MP_ASSIGNOP expression                       { resolveAssignment($1, $3); }                 
           | procedureStatement
           | compoundStatement
-          | MP_IF expression MP_THEN statement MP_ELSE statement
-          | MP_WHILE expression MP_DO statement
+          | MP_IF expression MP_THEN statement MP_ELSE statement  { verifyGuardExpr($2); }
+          | MP_WHILE expression MP_DO statement                   { verifyGuardExpr($2); }             
           ;
 
-variable  : MP_ID                                           
-          | MP_ID MP_BOPEN expressionList MP_BCLOSE         
+variable  : identifier                                            { $$ = initVarType(getTypeElseError(identifierAtIndex($1)), $1); }                                                                                      
+          | identifier MP_BOPEN expression MP_BCLOSE              { requireExprType(TT_INTEGER, $3); $$ = initVarType(resolveTypeClass(identifierAtIndex($1), TC_ARRAY), $1); }                  
 
-procedureStatement  : MP_ID
-                    | MP_ID MP_POPEN expressionList MP_PCLOSE
+procedureStatement  : identifier                                 
+                    | identifier MP_POPEN expressionList MP_PCLOSE
                     ;
 
-expressionList  : expression                                
-                | expressionList MP_COMMA expression        
+expressionList  : expression                                { $$ = insertExprList($1, initExprListType()); }                                                              
+                | expressionList MP_COMMA expression        { $$ = insertExprList($3, $1); }                
                 ;
 
 expression  : simpleExpression                              { $$ = $1; }
@@ -218,16 +224,19 @@ term  : factor                                              { $$ = $1; }
       | term MP_MODOP factor                                { $$ = resolveArithmeticOperation(MP_MODOP, $1, $3); }
       ;
 
-factor  : MP_ID                                             { $$ = (exprType){.tt = getTypeElseInstall(yytext, TT_UNDEFINED), .vi = NIL}; }
-        | MP_ID MP_POPEN expressionList MP_PCLOSE           { $$ = (exprType){.tt = resolveTypeClass(yytext, TC_FUNCTION), .vi = NIL}; }
-        | MP_ID MP_BOPEN expression MP_BCLOSE               { $$ = (exprType){.tt = resolveTypeClass(yytext, TC_ARRAY), .vi = NIL}; }
-        | MP_INTEGER                                        { $$ = (exprType){.tt = TT_INTEGER, .vi = installNumber(atof(yytext))}; }
-        | MP_REAL                                           { $$ = (exprType){.tt = TT_REAL, .vi = installNumber(atof(yytext))}; }
+factor  : identifier                                        { $$ = initExprType(getTypeElseInstall(identifierAtIndex($1), TT_UNDEFINED), NIL); }
+        | identifier MP_POPEN expressionList MP_PCLOSE      { $$ = initExprType(resolveTypeClass(identifierAtIndex($1), TC_FUNCTION), NIL); }
+        | identifier MP_BOPEN expression MP_BCLOSE          { requireExprType(TT_INTEGER, $3); $$ = initExprType(resolveTypeClass(identifierAtIndex($1), TC_ARRAY), NIL); } 
+        | MP_INTEGER                                        { $$ = initExprType(TT_INTEGER, installNumber(atof(yytext))); }
+        | MP_REAL                                           { $$ = initExprType(TT_REAL, installNumber(atof(yytext))); }
         | MP_POPEN expression MP_PCLOSE                     { $$ = $2; }
         ;
 
+identifier : MP_ID { $$ = installId(yytext); }
+
 sign  : MP_ADDOP
       ;
+
 
 %%
 
