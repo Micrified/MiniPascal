@@ -397,3 +397,30 @@ void verifyFunctionArgs (unsigned id, exprListType exprList) {
     }
 }
 
+/*
+********************************************************************************
+*                           Declaration Functions                              *
+********************************************************************************
+*/
+
+/* Installs all given variables into the symbol table, then frees the list */
+void installVarList (varListType varList) {
+    IdEntry *entry;
+    varType v;
+
+    for (int i = 0; i < varList.length; i++) {
+        v = varList.list[i];
+
+        // Warn if redefining something in the local scope.
+        if ((entry = tableScopeContains(identifierAtIndex(v.id))) != NULL) {
+            printWarning("Redefinition of \"%s\" \"%s\" in current scope!",
+            tokenTypeName(entry->tt), identifierAtIndex(entry->id));
+            entry->tt = v.tt;
+        } else {
+            installEntry(newIDEntry(v.id, v.tt));
+        }
+    }
+
+    // Free varList.
+    freeVarList(varList);
+}

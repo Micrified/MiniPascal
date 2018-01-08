@@ -126,7 +126,7 @@ int yyerror(char *s) {
 %type <expr> factor term simpleExpression expression 
 %type <exprList> expressionList
 %type <var> variable
-%type <varList> identifierList parameterList arguments
+%type <varList> identifierList parameterList arguments declarations
 // Starting Grammar Rule.
 %start program
 
@@ -138,15 +138,15 @@ int yyerror(char *s) {
 ********************************************************************************
 */
 
-program : MP_PROGRAM MP_ID MP_POPEN identifierList MP_PCLOSE MP_SCOLON declarations subprogramDeclarations compoundStatement MP_FSTOP MP_EOF { printf("ACCEPTED\n"); exit(0); }
+program : MP_PROGRAM MP_ID MP_POPEN identifierList MP_PCLOSE MP_SCOLON declarations { installVarList($7); } subprogramDeclarations compoundStatement MP_FSTOP MP_EOF { printf("ACCEPTED\n"); exit(0); }
         ;
 
 identifierList  : identifier                                         { $$ = insertVarType(initVarType(TT_UNDEFINED, $1), initVarListType()); }
                 | identifierList MP_COMMA identifier                 { $$ = insertVarType(initVarType(TT_UNDEFINED, $3), $1); }
                 ;
 
-declarations  : declarations MP_VAR identifierList MP_COLON type MP_SCOLON
-              |
+declarations  : declarations MP_VAR identifierList MP_COLON type MP_SCOLON  { $$ = appendVarList(mapTokenTypeToVarList($5, $3), $1); }
+              |                                                             { $$ = initVarListType(); }
               ;
 
 type  : standardType                                                          { $$ = $1; }
@@ -161,7 +161,7 @@ subprogramDeclarations  : subprogramDeclarations subprogramDeclaration MP_SCOLON
                         |
                         ;
 
-subprogramDeclaration : subprogramHead declarations compoundStatement { decrementScopeLevel(); }
+subprogramDeclaration : subprogramHead declarations compoundStatement { installVarList($2); decrementScopeLevel(); }
                       ;
 
 subprogramHead  : MP_FUNCTION identifier arguments MP_COLON standardType MP_SCOLON { installFunction($2, $5); incrementScopeLevel();  installFunctionArgs($2, $3); }

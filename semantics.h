@@ -109,4 +109,13 @@ void installFunctionArgs (unsigned id, varListType varList);
 */
 void verifyFunctionArgs (unsigned id, exprListType exprList);
 
+/*
+********************************************************************************
+*                           Declaration Prototypes                             *
+********************************************************************************
+*/
+
+/* Installs all given variables into the symbol table, then frees the list */
+void installVarList (varListType varList);
+
 #endif 

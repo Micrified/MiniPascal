@@ -174,6 +174,26 @@ IdEntry *tableContains (const char *identifier) {
     return NULL;
 }
 
+/* Returns pointer to IdEntry if in current table scope. Else NULL */
+IdEntry *tableScopeContains (const char *identifier) {
+
+    // Verify identifier is non-NULL.
+    if (identifier == NULL) {
+        fprintf(stderr, "Error: tableScopeContains: NULL identifier!\n");
+        exit(EXIT_FAILURE);
+    }
+
+    unsigned k = hash(identifier);
+    Node *lp;
+
+    // Search for identifier in current scope only.
+    if ((lp = listContains(identifier, symTable[k][level])) != NULL) {
+        return &(lp->entry);
+    }
+    
+    return NULL;
+}
+
 /* Inserts a new IdEntry into the table. Returns pointer to entry. */
 IdEntry *installEntry (IdEntry entry) {
     const char *identifier = identifierAtIndex(entry.id);

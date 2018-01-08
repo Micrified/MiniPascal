@@ -59,6 +59,9 @@ void decrementScopeLevel (void);
 /* Returns pointer to IdEntry if in table. Else NULL */
 IdEntry *tableContains (const char *identifier);
 
+/* Returns pointer to IdEntry if in current table scope. Else NULL */
+IdEntry *tableScopeContains (const char *identifier);
+
 /* Inserts a new IdEntry into the table. Returns pointer to entry. */
 IdEntry *installEntry (IdEntry entry);
 
