@@ -114,18 +114,19 @@ int yyerror(char *s) {
 
 // Bison YYSTYPE Declarations.
 %union {
-  idType        id;
+  unsigned      num;
   exprType      expr;
   exprListType  exprList;
   varType       var;
+  varListType   varList;
 }
 
 // Nonterminal return type rules.
-%type <id> identifier 
+%type <num> type standardType identifier statementList optionalStatements
 %type <expr> factor term simpleExpression expression 
 %type <exprList> expressionList
 %type <var> variable
-
+%type <varList> identifierList parameterList arguments
 // Starting Grammar Rule.
 %start program
 
@@ -140,20 +141,20 @@ int yyerror(char *s) {
 program : MP_PROGRAM MP_ID MP_POPEN identifierList MP_PCLOSE MP_SCOLON declarations subprogramDeclarations compoundStatement MP_FSTOP MP_EOF { printf("ACCEPTED\n"); exit(0); }
         ;
 
-identifierList  : MP_ID
-                | identifierList MP_COMMA MP_ID
+identifierList  : identifier                                         { $$ = insertVarType(initVarType(TT_UNDEFINED, $1), initVarListType()); }
+                | identifierList MP_COMMA identifier                 { $$ = insertVarType(initVarType(TT_UNDEFINED, $3), $1); }
                 ;
 
 declarations  : declarations MP_VAR identifierList MP_COLON type MP_SCOLON
               |
               ;
 
-type  : standardType
-      | MP_ARRAY MP_BOPEN MP_INTEGER MP_ELLIPSES MP_INTEGER MP_BCLOSE MP_OF standardType
+type  : standardType                                                          { $$ = $1; }
+      | MP_ARRAY MP_BOPEN MP_INTEGER MP_ELLIPSES MP_INTEGER MP_BCLOSE MP_OF standardType  { if ($8 == TT_INTEGER) {return TT_ARRAY_INTEGER;} else {return TT_ARRAY_REAL;} }
       ;
 
-standardType  : MP_TYPE_INTEGER
-              | MP_TYPE_REAL
+standardType  : MP_TYPE_INTEGER                                               { $$ = TT_INTEGER; }
+              | MP_TYPE_REAL                                                  { $$ = TT_REAL; }
               ;
 
 subprogramDeclarations  : subprogramDeclarations subprogramDeclaration MP_SCOLON
@@ -163,27 +164,27 @@ subprogramDeclarations  : subprogramDeclarations subprogramDeclaration MP_SCOLON
 subprogramDeclaration : subprogramHead declarations compoundStatement
                       ;
 
-subprogramHead  : MP_FUNCTION MP_ID arguments MP_COLON standardType MP_SCOLON
-                | MP_PROCEDURE MP_ID arguments MP_SCOLON
+subprogramHead  : MP_FUNCTION identifier arguments MP_COLON standardType MP_SCOLON { installFunction($2, $5); incrementScopeLevel(); installFunctionArgs($2, $3); decrementScopeLevel(); }
+                | MP_PROCEDURE identifier arguments MP_SCOLON                      
                 ;
 
-arguments : MP_POPEN parameterList MP_PCLOSE
-          |
+arguments : MP_POPEN parameterList MP_PCLOSE                      { $$ = $2; }
+          |                                                       { $$ = initVarListType(); }
           ;
 
-parameterList : identifierList MP_COLON type
-              | parameterList MP_SCOLON identifierList MP_COLON type
+parameterList : identifierList MP_COLON type                      { $$ = mapTokenTypeToVarList($3, $1); }                     
+              | parameterList MP_SCOLON identifierList MP_COLON type { $$ = appendVarList(mapTokenTypeToVarList($5, $3), $1); }
               ;
 
-compoundStatement : MP_BEGIN optionalStatements MP_END
+compoundStatement : MP_BEGIN optionalStatements MP_END            { if ($2 == 0) printWarning("Empty compound statement!"); }            
                   ;
 
-optionalStatements  : statementList
-                    |
+optionalStatements  : statementList                               { $$ = $1; }                              
+                    |                                             { $$ = 0; }                                               
                     ;
 
-statementList : statement
-              | statementList MP_SCOLON statement
+statementList : statement                                         { $$ = 1; }                    
+              | statementList MP_SCOLON statement                 { $$ = $1 + 1; } 
               ;
 
 statement : variable MP_ASSIGNOP expression                       { resolveAssignment($1, $3); }                 
@@ -200,39 +201,39 @@ procedureStatement  : identifier
                     | identifier MP_POPEN expressionList MP_PCLOSE
                     ;
 
-expressionList  : expression                                { $$ = insertExprList($1, initExprListType()); }                                                              
-                | expressionList MP_COMMA expression        { $$ = insertExprList($3, $1); }                
+expressionList  : expression                                      { $$ = insertExprList($1, initExprListType()); }                                                              
+                | expressionList MP_COMMA expression              { $$ = insertExprList($3, $1); }                
                 ;
 
-expression  : simpleExpression                              { $$ = $1; }
-            | simpleExpression MP_RELOP_LT simpleExpression { $$ = resolveBooleanOperation(MP_RELOP_LT, $1, $3); }
-            | simpleExpression MP_RELOP_LE simpleExpression { $$ = resolveBooleanOperation(MP_RELOP_LE, $1, $3); }
-            | simpleExpression MP_RELOP_EQ simpleExpression { $$ = resolveBooleanOperation(MP_RELOP_EQ, $1, $3); }
-            | simpleExpression MP_RELOP_GE simpleExpression { $$ = resolveBooleanOperation(MP_RELOP_GE, $1, $3); }
-            | simpleExpression MP_RELOP_GT simpleExpression { $$ = resolveBooleanOperation(MP_RELOP_GT, $1, $3); }
-            | simpleExpression MP_RELOP_NE simpleExpression { $$ = resolveBooleanOperation(MP_RELOP_NE, $1, $3); }
+expression  : simpleExpression                                    { $$ = $1; }
+            | simpleExpression MP_RELOP_LT simpleExpression       { $$ = resolveBooleanOperation(MP_RELOP_LT, $1, $3); }
+            | simpleExpression MP_RELOP_LE simpleExpression       { $$ = resolveBooleanOperation(MP_RELOP_LE, $1, $3); }
+            | simpleExpression MP_RELOP_EQ simpleExpression       { $$ = resolveBooleanOperation(MP_RELOP_EQ, $1, $3); }
+            | simpleExpression MP_RELOP_GE simpleExpression       { $$ = resolveBooleanOperation(MP_RELOP_GE, $1, $3); }
+            | simpleExpression MP_RELOP_GT simpleExpression       { $$ = resolveBooleanOperation(MP_RELOP_GT, $1, $3); }
+            | simpleExpression MP_RELOP_NE simpleExpression       { $$ = resolveBooleanOperation(MP_RELOP_NE, $1, $3); }
             ;
 
-simpleExpression  : term                                    { $$ = $1; }
-                  | sign term                               { $$ = $2; }
-                  | simpleExpression MP_ADDOP term          { $$ = resolveArithmeticOperation(MP_ADDOP, $1, $3); }
+simpleExpression  : term                                          { $$ = $1; }
+                  | sign term                                     { $$ = $2; }
+                  | simpleExpression MP_ADDOP term                { $$ = resolveArithmeticOperation(MP_ADDOP, $1, $3); }
                   ;
 
-term  : factor                                              { $$ = $1; }
-      | term MP_MULOP factor                                { $$ = resolveArithmeticOperation(MP_MULOP, $1, $3); }
-      | term MP_DIVOP factor                                { $$ = resolveArithmeticOperation(MP_DIVOP, $1, $3); }
-      | term MP_MODOP factor                                { $$ = resolveArithmeticOperation(MP_MODOP, $1, $3); }
+term  : factor                                                    { $$ = $1; }
+      | term MP_MULOP factor                                      { $$ = resolveArithmeticOperation(MP_MULOP, $1, $3); }
+      | term MP_DIVOP factor                                      { $$ = resolveArithmeticOperation(MP_DIVOP, $1, $3); }
+      | term MP_MODOP factor                                      { $$ = resolveArithmeticOperation(MP_MODOP, $1, $3); }
       ;
 
-factor  : identifier                                        { $$ = initExprType(getTypeElseInstall(identifierAtIndex($1), TT_UNDEFINED), NIL); }
-        | identifier MP_POPEN expressionList MP_PCLOSE      { $$ = initExprType(resolveTypeClass(identifierAtIndex($1), TC_FUNCTION), NIL); }
-        | identifier MP_BOPEN expression MP_BCLOSE          { requireExprType(TT_INTEGER, $3); $$ = initExprType(resolveTypeClass(identifierAtIndex($1), TC_ARRAY), NIL); } 
-        | MP_INTEGER                                        { $$ = initExprType(TT_INTEGER, installNumber(atof(yytext))); }
-        | MP_REAL                                           { $$ = initExprType(TT_REAL, installNumber(atof(yytext))); }
-        | MP_POPEN expression MP_PCLOSE                     { $$ = $2; }
+factor  : identifier                                              { $$ = initExprType(getTypeElseInstall(identifierAtIndex($1), TT_UNDEFINED), NIL); }
+        | identifier MP_POPEN expressionList MP_PCLOSE            { $$ = initExprType(resolveTypeClass(identifierAtIndex($1), TC_FUNCTION), NIL); }
+        | identifier MP_BOPEN expression MP_BCLOSE                { requireExprType(TT_INTEGER, $3); $$ = initExprType(resolveTypeClass(identifierAtIndex($1), TC_ARRAY), NIL); } 
+        | MP_INTEGER                                              { $$ = initExprType(TT_INTEGER, installNumber(atof(yytext))); }
+        | MP_REAL                                                 { $$ = initExprType(TT_REAL, installNumber(atof(yytext))); }
+        | MP_POPEN expression MP_PCLOSE                           { $$ = $2; }
         ;
 
-identifier : MP_ID { $$ = installId(yytext); }
+identifier : MP_ID                                                { $$ = installId(yytext); }
 
 sign  : MP_ADDOP
       ;

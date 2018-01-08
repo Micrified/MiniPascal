@@ -40,7 +40,14 @@ int equalsID (IdEntry a, IdEntry b) {
 
 /* Convenient initializer for IdEntry. */
 IdEntry newIDEntry (unsigned id, unsigned tt) {
-    return (IdEntry){.id = id, .tt = tt};
+    return (IdEntry){.id = id, .tt = tt, .argc = 0, .argv = NULL};
+}
+
+/* Frees an IdEntry. */
+void freeIdEntry (IdEntry entry) {
+    if (entry.argv != NULL) {
+        free(entry.argv);
+    }
 }
 
 /*
@@ -72,6 +79,7 @@ static void freeNode (Node *lp) {
         return;
     }
     freeNode(lp->next);
+    freeIdEntry(lp->entry);
     free(lp);
 }
 
@@ -119,17 +127,8 @@ static unsigned hash (const char *s) {
     return hash % SYMTAB_SIZE;
 }
 
-
-/*
-********************************************************************************
-*                               Public Table Routines                          *
-********************************************************************************
-*/
-
-
-
 /* Sets the current table level/scope */
-void setLevel (unsigned lvl) {
+static void setLevel (unsigned lvl) {
     if (lvl > SYMTAB_LEVELS) {
         fprintf(stderr, "Error: Bad Level: (%d > %d)\n", lvl, SYMTAB_LEVELS);
         exit(EXIT_FAILURE);
@@ -137,6 +136,21 @@ void setLevel (unsigned lvl) {
     level = lvl;
 }
 
+/*
+********************************************************************************
+*                               Public Table Routines                          *
+********************************************************************************
+*/
+
+/* Increments the current table level or scope */
+void incrementScopeLevel (void) {
+    setLevel(level + 1);
+}
+
+/* Decrements the current table level or scope */
+void decrementScopeLevel (void) {
+    setLevel(level - 1);
+}
 
 /* Returns pointer to IdEntry if in table. Else NULL */
 IdEntry *tableContains (const char *identifier) {
@@ -148,9 +162,15 @@ IdEntry *tableContains (const char *identifier) {
     }
 
     unsigned k = hash(identifier);
-    Node *lp = listContains(identifier, symTable[k][level]);
+    Node *lp;
+    // Search for identifier in current and lower scope levels.
+    for (int l = level; l >= 0; l--) {
+        if ((lp = listContains(identifier, symTable[k][l])) != NULL) {
+            return &(lp->entry);
+        }
+    }
 
-    return (lp == NULL) ? NULL : &(lp->entry);
+    return NULL;
 }
 
 /* Inserts a new IdEntry into the table. Returns pointer to entry. */

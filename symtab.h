@@ -25,6 +25,8 @@
 typedef struct {
     unsigned id;    // Identifier index in string table.
     unsigned tt;    // Identifier token type.
+    unsigned argc;  // Argument Count (for routines).
+    void    *argv;  // Array of IdEntry pointers (for routines).
 } IdEntry;
 
 /*
@@ -36,8 +38,11 @@ typedef struct {
 /* Returns nonzero if a is the same entry as b */
 int equalsID (IdEntry a, IdEntry b);
 
-/* Convenient initializer for IdEntry. */
+/* Convenient initializer for standard IdEntry. */
 IdEntry newIDEntry (unsigned id, unsigned tt);
+
+/* Frees an IdEntry. */
+void freeIdEntry (IdEntry entry);
 
 /*
 ********************************************************************************
@@ -45,8 +50,11 @@ IdEntry newIDEntry (unsigned id, unsigned tt);
 ********************************************************************************
 */
 
-/* Sets the current table level or scope */
-void setLevel (unsigned lvl);
+/* Increments the current table level or scope */
+void incrementScopeLevel (void);
+
+/* Decrements the current table level or scope */
+void decrementScopeLevel (void);
 
 /* Returns pointer to IdEntry if in table. Else NULL */
 IdEntry *tableContains (const char *identifier);

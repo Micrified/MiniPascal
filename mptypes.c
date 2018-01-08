@@ -59,7 +59,7 @@ void freeExprList(exprListType exprList) {
 /* Allocates a copy of the given exprType and places it in returned exprList list. */
 exprListType insertExprList (exprType expr, exprListType exprList) {
 
-    if ((exprList.list = realloc(exprList.list, exprList.length + 1)) == NULL) {
+    if ((exprList.list = realloc(exprList.list, (exprList.length + 1) * sizeof(exprType))) == NULL) {
         fprintf(stderr, "Error: insertExprList: List reallocation failed!\n");
         exit(EXIT_FAILURE);
     }
@@ -78,4 +78,64 @@ exprListType insertExprList (exprType expr, exprListType exprList) {
 /* Initializes a new varType with the given token-type (tt) and identifier-index (id) */
 varType initVarType (unsigned tt, unsigned id) {
     return (varType){.tt = tt, .id = id};
+}
+
+/*
+********************************************************************************
+*                             Functions: varListType                           *
+********************************************************************************
+*/
+
+/* Initializes a new varListType */
+varListType initVarListType (void) {
+    return (varListType){.length = 0, .list = NULL};
+}
+
+/* Frees allocated memory in a varListType */
+void freeVarList(varListType varList) {
+    free(varList.list);
+}
+
+/* Allocates a copy of the given varType and places it in returned varList list. */
+varListType insertVarType (varType var, varListType varList) {
+
+    if ((varList.list = realloc(varList.list, (varList.length + 1) * sizeof(varType))) == NULL) {
+        fprintf(stderr, "Error: insertVarType: List reallocation failed!\n");
+        exit(EXIT_FAILURE);
+    }
+
+    varList.list[varList.length++] = var;
+    
+    return varList;
+}
+
+/* Maps the given token-type to the list of varTypes in the varList list. */
+varListType mapTokenTypeToVarList (unsigned tt, varListType varList) {
+    for (int i = 0; i < varList.length; i++) {
+        varList.list[i].tt = tt;
+    }
+    return varList;
+}
+
+/* Appends the first varListType list to second varListType */
+varListType appendVarList (varListType suffix, varListType prefix) {
+
+    // Compute new length of prefix.
+    prefix.length += suffix.length;
+
+    // Reallocate prefix list.
+    if ((prefix.list = realloc(prefix.list, prefix.length)) == NULL) {
+        fprintf(stderr, "Error: appendVarList: List reallocation failed!\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Append copies of varTypes to prefix list.
+    for (int i = prefix.length - suffix.length; i < prefix.length; i++) {
+        prefix.list[i] = suffix.list[i];
+    }
+
+    // Free suffix list.
+    free(suffix.list);
+
+    return prefix;
 }

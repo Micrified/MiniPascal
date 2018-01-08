@@ -78,5 +78,25 @@ exprType resolveBooleanOperation (unsigned operator, exprType a, exprType b);
  */
 void resolveAssignment (varType var, exprType expr);
 
+/*
+********************************************************************************
+*                            varListType Prototypes                            *
+********************************************************************************
+*/
+
+/* Installs a function IdEntry into the symbol table without arguments.
+ * 1. 'id' must not exist.
+ * 2. 'tt' must be of token-class TC_FUNCTION.
+*/
+void installFunction (unsigned id, unsigned tt);
+
+/* Installs all arguments in varList for the entry associated with 'id'.
+ * 1. Verifies 'id' exists and has token-class TC_FUNCTION.
+ * 2. Verifies arguments have proper token-types.
+ * 3. Verifies arguments are not already defined.
+ * 4. Frees varList when done. 
+ * Note: Must increment scope level prior to this function.
+*/
+void installFunctionArgs (unsigned id, varListType varList);
 
 #endif 

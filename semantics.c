@@ -241,9 +241,101 @@ void resolveAssignment (varType var, exprType expr) {
         identifierAtIndex(var.id), tokenTypeName(var.tt));
     }
 
+    // (*). Verify that expression token-type is primitive.
+    if (!isPrimitiveOperand(expr.tt)) {
+        printError("\"%s\" may not be assigned to \"%s\"!", 
+        tokenTypeName(expr.tt), tokenTypeName(var.tt));
+    }
+
     // (*). Verify exprType token-type matches.
     if (var.tt != expr.tt) {
-        printError("\"%s\" of type \"%s\" may not be assigned a value of type \"%s\"!", 
-        identifierAtIndex(var.id), tokenTypeName(var.tt), tokenTypeName(expr.tt));
+        printWarning("Assigned value will be %s!", 
+        (var.tt == TT_INTEGER) ? "truncated" : "promoted");
     }
 }
+
+/*
+********************************************************************************
+*                             varListType Functions                            *
+********************************************************************************
+*/
+
+/* Installs a function IdEntry into the symbol table without arguments.
+ * 1. 'id' must not exist.
+ * 2. 'tt' must be of token-class TC_FUNCTION.
+*/
+void installFunction (unsigned id, unsigned tt) {
+    IdEntry *entry;
+
+    // (*). Verify function identifier is unused. Else throw error.
+    if ((entry = tableContains(identifierAtIndex(id))) != NULL) {
+        printError("\"%s\" is already defined as \"%s\"!", identifierAtIndex(id), 
+        tokenTypeName(entry->tt));
+        return;
+    }
+
+    // (*). Verify function return token-type is  a primitive. Else throw error.
+    if (!isPrimitiveOperand(tt)) {
+        printError("\"%s\" is not a valid function return type!", tokenTypeName(tt));
+        return;
+    }
+
+    // (*). Install function in symbol table with function-class of given token-type.
+    unsigned ft = (tt == TT_INTEGER) ? TT_FUNCTION_INTEGER : TT_FUNCTION_REAL;
+    entry = installEntry(newIDEntry(id, ft));
+}
+
+/* Installs all arguments in varList for the entry associated with 'id'.
+ * 1. Verifies 'id' exists and has token-class TC_FUNCTION.
+ * 2. Verifies arguments have proper token-types.
+ * 3. Verifies arguments are not already defined.
+ * 4. Frees varList when done. 
+ * Note: Must increment scope level prior to this function.
+*/
+void installFunctionArgs (unsigned id, varListType varList) {
+    IdEntry *entry, **argv;
+
+    // (*). Verify entry exists, and has function token-type.
+    if ((entry = tableContains(identifierAtIndex(id))) == NULL || (entry->tt & TC_FUNCTION) == 0) {
+        fprintf(stderr, "Error: installFunctionArgs: \"%s\" doesn't exist or doesn't have token-class TC_FUNCTION!\n",
+        identifierAtIndex(id));
+        exit(EXIT_FAILURE);
+    }
+
+    // (*). Verify argument list contains valid token-types.
+    for (int i = 0; i < varList.length; i++) {
+        if (!isPrimitiveOperand(varList.list[i].tt)) {
+            printError("Parameter \"%s\" in function \"%s\" has illegal type \"%s\"!", 
+            identifierAtIndex(varList.list[i].id),
+            identifierAtIndex(id),
+            tokenTypeName(varList.list[i].tt));
+            return;
+        }
+    }
+
+    // (*). Allocate pointer array for arguments.
+    if ((argv = malloc(varList.length * sizeof(IdEntry *))) == NULL) {
+        fprintf(stderr, "Error: installFunction: Couldn't allocate argv!\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // (*). Install arguments (should be no existing entries).
+    for (int i = 0; i < varList.length; i++) {
+        varType v = varList.list[i];
+
+        // If entry exists, then duplicate argument name.
+        if ((entry = tableContains(identifierAtIndex(v.id))) != NULL) {
+            printError("Duplicate parameter names in function \"%s\"!", identifierAtIndex(id));
+            return;
+        }
+        argv[i] = installEntry(newIDEntry(v.id, v.tt));
+    }
+
+    // (*). Assign argument vector and length to function entry.
+    entry->argc = varList.length;
+    entry->argv = argv;
+
+    // (*). Free variable list.
+    freeVarList(varList);
+}
+
