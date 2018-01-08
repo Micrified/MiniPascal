@@ -43,7 +43,7 @@ static int isPrimitiveOperand (unsigned tt) {
 
 /* Returns nonzero if the given token-type is of the given token-class */
 static int isTokenClass (unsigned tc, unsigned tt) {
-    return (tc & tc);
+    return (tt & tc);
 }
 
 /* Reduces a valid operand type to a primitive type */
@@ -57,7 +57,7 @@ static unsigned reduceValidOperandType (unsigned tt) {
 
 /*
 ********************************************************************************
-*                              idType Functions                                *
+*                           Identifier Functions                               *
 ********************************************************************************
 */
 
@@ -105,7 +105,7 @@ void requireIdClass (const char *identifier, unsigned class) {
 
 /*
 ********************************************************************************
-*                             exprType Functions                               *
+*                             Expression Functions                             *
 ********************************************************************************
 */
 
@@ -229,24 +229,24 @@ exprType resolveBooleanOperation (unsigned operator, exprType a, exprType b) {
 
 /*
 ********************************************************************************
-*                                varType Functions                             *
+*                             Assignment Functions                             *
 ********************************************************************************
 */
 
-/* Resolves an assignment of an exprType to an identifier.
- * If the varType identifier has non-primitive token-type, an error is thrown.
- * If the exprType token-type doesn't match the identifier's token-type,
- *  an error is thrown.
- */
+/* Resolves assignment of expression to variable.
+ * 1. If variable token-type is not primitive, an error is thrown.
+ * 2. If expression token-type is not primitive, an error is thrown.
+ * 3. Type promotion or truncation occurs in case of mismatching primitives.
+ */ 
 void resolveAssignment (varType var, exprType expr) {
 
-    // (*). Verify variable token-type is assignable.
+    // (1). Verify variable token-type is assignable.
     if (!isPrimitiveOperand(var.tt)) {
         printError("\"%s\" of type \"%s\" is not assignable!",
         identifierAtIndex(var.id), tokenTypeName(var.tt));
     }
 
-    // (*). Verify that expression token-type is primitive.
+    // (2). Verify that expression token-type is primitive.
     if (!isPrimitiveOperand(expr.tt)) {
         printError("\"%s\" may not be assigned to \"%s\"!", 
         tokenTypeName(expr.tt), tokenTypeName(var.tt));
@@ -255,7 +255,7 @@ void resolveAssignment (varType var, exprType expr) {
     // (*). Reduce variable token-type.
     var.tt = reduceValidOperandType(var.tt);
 
-    // (*). Verify exprType token-type matches.
+    // (3). Verify exprType token-type matches.
     if (var.tt != expr.tt) {
         printWarning("Assigned value will be %s!", 
         (var.tt == TT_INTEGER) ? "truncated" : "promoted");
@@ -264,25 +264,26 @@ void resolveAssignment (varType var, exprType expr) {
 
 /*
 ********************************************************************************
-*                             varListType Functions                            *
+*                        Function/Procedure Functions                          *
 ********************************************************************************
 */
 
-/* Installs a function IdEntry into the symbol table without arguments.
- * 1. 'id' must not exist.
- * 2. 'tt' must be of token-class TC_FUNCTION.
+/* Installs a function IdEntry into the symbol table.
+ * 1. If function identifier in use, an error is thrown.
+ * 2. If function has non-primitive return type, an error is thrown.
+ * Function is installed with FUNCTION class variant of token-type.
 */
 void installFunction (unsigned id, unsigned tt) {
     IdEntry *entry;
 
-    // (*). Verify function identifier is unused. Else throw error.
+    // (1). Verify function identifier is unused. Else throw error.
     if ((entry = tableContains(identifierAtIndex(id))) != NULL) {
         printError("\"%s\" is already defined as \"%s\"!", identifierAtIndex(id), 
         tokenTypeName(entry->tt));
         return;
     }
 
-    // (*). Verify function return token-type is  a primitive. Else throw error.
+    // (2). Verify function return token-type is  a primitive. Else throw error.
     if (!isPrimitiveOperand(tt)) {
         printError("\"%s\" is not a valid function return type!", tokenTypeName(tt));
         return;
@@ -293,27 +294,28 @@ void installFunction (unsigned id, unsigned tt) {
     entry = installEntry(newIDEntry(id, ft));
 }
 
-/* Installs all arguments in varList for the entry associated with 'id'.
- * 1. Verifies 'id' exists and has token-class TC_FUNCTION.
- * 2. Verifies arguments have proper token-types.
- * 3. Verifies arguments are not already defined.
- * 4. Frees varList when done. 
- * Note: Must increment scope level prior to this function.
+/* Installs variables in varList as arguments of function 'id'.
+ * 1. Verifies 'id' exists, and has correct token-class.
+ * 2. Install local variable with function name in new scope.
+ * 3. Verifies variables in varlist have primitive token-types.
+ * 4. Verifies variables in varlist have unique names.
+ * Frees varList when finished. Scope must be incremented prior 
+ * to using this function.
 */
 void installFunctionArgs (unsigned id, varListType varList) {
     IdEntry *entry, **argv;
 
-    // (*). Verify entry exists, and has function token-type.
+    // (1). Verify entry exists, and has token-class TC_FUNCTION.
     if ((entry = tableContains(identifierAtIndex(id))) == NULL || !isTokenClass(TC_FUNCTION, entry->tt)) {
         fprintf(stderr, "Error: installFunctionArgs: \"%s\" doesn't exist or doesn't have token-class \"%s\"!\n",
         identifierAtIndex(id), tokenClassName(TC_FUNCTION));
         exit(EXIT_FAILURE);
     }
 
-    // (*). Install local variable with same name as function but with primitive type.
+    // (2). Install local variable with same name as function but with primitive type.
     installEntry(newIDEntry(id, reduceValidOperandType(entry->tt)));
 
-    // (*). Verify argument list contains valid token-types.
+    // (3). Verify argument list contains valid token-types.
     for (int i = 0; i < varList.length; i++) {
         printf("Checking no.%d (varType) {.id = %u, .tt = %s}\n", i, varList.list[i].id, tokenTypeName(varList.list[i].tt));
         if (!isPrimitiveOperand(varList.list[i].tt)) {
@@ -331,7 +333,7 @@ void installFunctionArgs (unsigned id, varListType varList) {
         exit(EXIT_FAILURE);
     }
 
-    // (*). Install arguments (should be no existing entries).
+    // (4). Install arguments (should be no existing entries).
     for (int i = 0; i < varList.length; i++) {
         varType v = varList.list[i];
 
@@ -345,13 +347,53 @@ void installFunctionArgs (unsigned id, varListType varList) {
 
     // (*). Assign argument vector and length to function entry.
     entry->argc = varList.length;
-    entry->argv = argv;
+    entry->argv = (void **)argv;
 
-    // (*). Free variable list.
+    // (5). Free variable list.
     freeVarList(varList);
 
     printf("DEBUG: Verify tables match expected state!\n");
     printStringTable();
     printSymbolTables();
+}
+
+/* Verifies that expressions supplied to function identified by 'id'
+ * match the parameter requirements. Does nothing if 'id' not a function.
+ * to be a function when invoking this function.
+ * 1) Verifies expression list count matches argument count.
+ * 2) Verifies expression token-types match argument token-types.
+*/
+void verifyFunctionArgs (unsigned id, exprListType exprList) {
+    IdEntry *entry;
+
+    // (*). Verify argument given is a function. Return otherwise.
+    if ((entry = tableContains(identifierAtIndex(id))) == NULL || !isTokenClass(TC_FUNCTION, entry->tt)) {
+        return;
+    }
+
+    // (1). Verify expression list count matches argument count. 
+    if (exprList.length != entry->argc) {
+        printError("\"%s\" requires %d arguments, not %d!", identifierAtIndex(id), entry->argc, exprList.length);
+        return;
+    }
+
+    // (2). Verify expression token-types match argument token-types.
+    for (int i = 0; i < entry->argc; i++) {
+        IdEntry *arg = (IdEntry *)entry->argv[i];
+        exprType expr = exprList.list[i];
+
+        if (arg->tt == expr.tt) {
+            continue;
+        }
+
+        if (!isPrimitiveOperand(expr.tt)) {
+            printError("Parameter %d of function \"%s\" expected \"%s\" but got \"%s\" instead!",
+            i + 1, identifierAtIndex(id), tokenTypeName(arg->tt), tokenTypeName(exprList.list[i].tt));
+            continue;
+        }
+
+        printWarning("Parameter %d of function \"%s\" will be %s!", 
+        i + 1, identifierAtIndex(id), (expr.tt == TT_INTEGER) ? "promoted" : "truncated");
+    }
 }
 

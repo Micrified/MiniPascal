@@ -18,7 +18,7 @@
 
 /*
 ********************************************************************************
-*                               idType Prototypes                              *
+*                             Identifier Prototypes                            *
 ********************************************************************************
 */
 
@@ -33,7 +33,7 @@ void requireIdClass (const char *identifier, unsigned class);
 
 /*
 ********************************************************************************
-*                              exprType Prototypes                             *
+*                            Expression Prototypes                             *
 ********************************************************************************
 */
 
@@ -67,36 +67,46 @@ exprType resolveBooleanOperation (unsigned operator, exprType a, exprType b);
 
 /*
 ********************************************************************************
-*                               varType Prototypes                             *
+*                            Assignment Prototypes                             *
 ********************************************************************************
 */
 
-/* Resolves an assignment of an exprType to an identifier.
- * If the varType identifier has token-type undefined, an error is thrown.
- * If the exprType token-type doesn't match the identifier's token-type,
- *  an error is thrown.
- */
+/* Resolves assignment of expression to variable.
+ * 1. If variable token-type is not primitive, an error is thrown.
+ * 2. If expression token-type is not primitive, an error is thrown.
+ * 3. Type promotion or truncation occurs in case of mismatching primitives.
+ */ 
 void resolveAssignment (varType var, exprType expr);
 
 /*
 ********************************************************************************
-*                            varListType Prototypes                            *
+*                      Function/Procedure Prototypes                           *
 ********************************************************************************
 */
 
-/* Installs a function IdEntry into the symbol table without arguments.
- * 1. 'id' must not exist.
- * 2. 'tt' must be of token-class TC_FUNCTION.
+/* Installs a function IdEntry into the symbol table.
+ * 1. If function identifier in use, an error is thrown.
+ * 2. If function has non-primitive return type, an error is thrown.
+ * Function is installed with FUNCTION class variant of token-type.
 */
 void installFunction (unsigned id, unsigned tt);
 
-/* Installs all arguments in varList for the entry associated with 'id'.
- * 1. Verifies 'id' exists and has token-class TC_FUNCTION.
- * 2. Verifies arguments have proper token-types.
- * 3. Verifies arguments are not already defined.
- * 4. Frees varList when done. 
- * Note: Must increment scope level prior to this function.
+/* Installs variables in varList as arguments of function 'id'.
+ * 1. Verifies 'id' exists, and has correct token-class.
+ * 2. Install local variable with function name in new scope.
+ * 3. Verifies variables in varlist have primitive token-types.
+ * 4. Verifies variables in varlist have unique names.
+ * Frees varList when finished. Scope must be incremented prior 
+ * to using this function.
 */
 void installFunctionArgs (unsigned id, varListType varList);
+
+/* Verifies that expressions supplied to function identified by 'id'
+ * match the parameter requirements. Does nothing if 'id' not a function.
+ * to be a function when invoking this function.
+ * 1) Verifies expression list count matches argument count.
+ * 2) Verifies expression token-types match argument token-types.
+*/
+void verifyFunctionArgs (unsigned id, exprListType exprList);
 
 #endif 

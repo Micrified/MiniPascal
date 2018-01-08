@@ -164,7 +164,7 @@ subprogramDeclarations  : subprogramDeclarations subprogramDeclaration MP_SCOLON
 subprogramDeclaration : subprogramHead declarations compoundStatement { decrementScopeLevel(); }
                       ;
 
-subprogramHead  : MP_FUNCTION identifier arguments MP_COLON standardType MP_SCOLON { installFunction($2, $5); incrementScopeLevel(); installFunctionArgs($2, $3); }
+subprogramHead  : MP_FUNCTION identifier arguments MP_COLON standardType MP_SCOLON { installFunction($2, $5); incrementScopeLevel();  installFunctionArgs($2, $3); }
                 | MP_PROCEDURE identifier arguments MP_SCOLON                      
                 ;
 
@@ -226,7 +226,7 @@ term  : factor                                                    { $$ = $1; }
       ;
 
 factor  : identifier                                              { $$ = initExprType(getTypeElseInstall(identifierAtIndex($1), TT_UNDEFINED), NIL); }
-        | identifier MP_POPEN expressionList MP_PCLOSE            { $$ = initExprType(resolveTypeClass(identifierAtIndex($1), TC_FUNCTION), NIL); }
+        | identifier MP_POPEN expressionList MP_PCLOSE            { $$ = initExprType(resolveTypeClass(identifierAtIndex($1), TC_FUNCTION), NIL); verifyFunctionArgs($1, $3); }
         | identifier MP_BOPEN expression MP_BCLOSE                { requireExprType(TT_INTEGER, $3); $$ = initExprType(resolveTypeClass(identifierAtIndex($1), TC_ARRAY), NIL); } 
         | MP_INTEGER                                              { $$ = initExprType(TT_INTEGER, installNumber(atof(yytext))); }
         | MP_REAL                                                 { $$ = initExprType(TT_REAL, installNumber(atof(yytext))); }

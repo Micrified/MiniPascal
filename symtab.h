@@ -26,7 +26,7 @@ typedef struct {
     unsigned id;    // Identifier index in string table.
     unsigned tt;    // Identifier token type.
     unsigned argc;  // Argument Count (for routines).
-    void    *argv;  // Array of IdEntry pointers (for routines).
+    void    **argv;  // Array of IdEntry pointers (for routines).
 } IdEntry;
 
 /*

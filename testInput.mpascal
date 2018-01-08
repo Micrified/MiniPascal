@@ -4,6 +4,7 @@ VAR x : INTEGER;
 VAR y : REAL;
 VAR x : REAL;
 
+
 FUNCTION square (x, z : INTEGER; y : REAL) : INTEGER;
 BEGIN
     square := x * y;
@@ -11,5 +12,5 @@ BEGIN
 END;
 
 BEGIN
-
+    z := square(1, 1.1, 2.2)
 END.
