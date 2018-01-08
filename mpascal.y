@@ -161,10 +161,10 @@ subprogramDeclarations  : subprogramDeclarations subprogramDeclaration MP_SCOLON
                         |
                         ;
 
-subprogramDeclaration : subprogramHead declarations compoundStatement
+subprogramDeclaration : subprogramHead declarations compoundStatement { decrementScopeLevel(); }
                       ;
 
-subprogramHead  : MP_FUNCTION identifier arguments MP_COLON standardType MP_SCOLON { installFunction($2, $5); incrementScopeLevel(); installFunctionArgs($2, $3); decrementScopeLevel(); }
+subprogramHead  : MP_FUNCTION identifier arguments MP_COLON standardType MP_SCOLON { installFunction($2, $5); incrementScopeLevel(); installFunctionArgs($2, $3); }
                 | MP_PROCEDURE identifier arguments MP_SCOLON                      
                 ;
 

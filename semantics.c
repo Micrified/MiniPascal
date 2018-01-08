@@ -41,6 +41,11 @@ static int isPrimitiveOperand (unsigned tt) {
     return (tt > TT_UNDEFINED && tt < TC_ARRAY);
 }
 
+/* Returns nonzero if the given token-type is of the given token-class */
+static int isTokenClass (unsigned tc, unsigned tt) {
+    return (tc & tc);
+}
+
 /* Reduces a valid operand type to a primitive type */
 static unsigned reduceValidOperandType (unsigned tt) {
     if (isPrimitiveOperand(tt)) {
@@ -235,7 +240,7 @@ exprType resolveBooleanOperation (unsigned operator, exprType a, exprType b) {
  */
 void resolveAssignment (varType var, exprType expr) {
 
-    // (*). Verify identifier token-type is assignable.
+    // (*). Verify variable token-type is assignable.
     if (!isPrimitiveOperand(var.tt)) {
         printError("\"%s\" of type \"%s\" is not assignable!",
         identifierAtIndex(var.id), tokenTypeName(var.tt));
@@ -246,6 +251,9 @@ void resolveAssignment (varType var, exprType expr) {
         printError("\"%s\" may not be assigned to \"%s\"!", 
         tokenTypeName(expr.tt), tokenTypeName(var.tt));
     }
+
+    // (*). Reduce variable token-type.
+    var.tt = reduceValidOperandType(var.tt);
 
     // (*). Verify exprType token-type matches.
     if (var.tt != expr.tt) {
@@ -296,14 +304,18 @@ void installFunctionArgs (unsigned id, varListType varList) {
     IdEntry *entry, **argv;
 
     // (*). Verify entry exists, and has function token-type.
-    if ((entry = tableContains(identifierAtIndex(id))) == NULL || (entry->tt & TC_FUNCTION) == 0) {
-        fprintf(stderr, "Error: installFunctionArgs: \"%s\" doesn't exist or doesn't have token-class TC_FUNCTION!\n",
-        identifierAtIndex(id));
+    if ((entry = tableContains(identifierAtIndex(id))) == NULL || !isTokenClass(TC_FUNCTION, entry->tt)) {
+        fprintf(stderr, "Error: installFunctionArgs: \"%s\" doesn't exist or doesn't have token-class \"%s\"!\n",
+        identifierAtIndex(id), tokenClassName(TC_FUNCTION));
         exit(EXIT_FAILURE);
     }
 
+    // (*). Install local variable with same name as function but with primitive type.
+    installEntry(newIDEntry(id, reduceValidOperandType(entry->tt)));
+
     // (*). Verify argument list contains valid token-types.
     for (int i = 0; i < varList.length; i++) {
+        printf("Checking no.%d (varType) {.id = %u, .tt = %s}\n", i, varList.list[i].id, tokenTypeName(varList.list[i].tt));
         if (!isPrimitiveOperand(varList.list[i].tt)) {
             printError("Parameter \"%s\" in function \"%s\" has illegal type \"%s\"!", 
             identifierAtIndex(varList.list[i].id),
@@ -324,7 +336,7 @@ void installFunctionArgs (unsigned id, varListType varList) {
         varType v = varList.list[i];
 
         // If entry exists, then duplicate argument name.
-        if ((entry = tableContains(identifierAtIndex(v.id))) != NULL) {
+        if (tableContains(identifierAtIndex(v.id)) != NULL) {
             printError("Duplicate parameter names in function \"%s\"!", identifierAtIndex(id));
             return;
         }
@@ -337,5 +349,9 @@ void installFunctionArgs (unsigned id, varListType varList) {
 
     // (*). Free variable list.
     freeVarList(varList);
+
+    printf("DEBUG: Verify tables match expected state!\n");
+    printStringTable();
+    printSymbolTables();
 }
 

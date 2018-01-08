@@ -124,14 +124,14 @@ varListType appendVarList (varListType suffix, varListType prefix) {
     prefix.length += suffix.length;
 
     // Reallocate prefix list.
-    if ((prefix.list = realloc(prefix.list, prefix.length)) == NULL) {
+    if ((prefix.list = realloc(prefix.list, prefix.length * sizeof(varType))) == NULL) {
         fprintf(stderr, "Error: appendVarList: List reallocation failed!\n");
         exit(EXIT_FAILURE);
     }
 
     // Append copies of varTypes to prefix list.
-    for (int i = prefix.length - suffix.length; i < prefix.length; i++) {
-        prefix.list[i] = suffix.list[i];
+    for (int i = 0; i < suffix.length; i++) {
+        prefix.list[prefix.length - suffix.length + i] = suffix.list[i];
     }
 
     // Free suffix list.

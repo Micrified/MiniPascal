@@ -163,6 +163,7 @@ IdEntry *tableContains (const char *identifier) {
 
     unsigned k = hash(identifier);
     Node *lp;
+
     // Search for identifier in current and lower scope levels.
     for (int l = level; l >= 0; l--) {
         if ((lp = listContains(identifier, symTable[k][l])) != NULL) {
@@ -210,7 +211,9 @@ void printSymbolTables (void) {
     for (int i = 0; i < SYMTAB_LEVELS; i++) {
         printf("****************************** LEVEL %u ******************************\n", i);
         for (int j = 0; j < SYMTAB_SIZE; j++) {
-            printf("%d.\t", j); printList(symTable[j][i]); putchar('\n');
+            if (symTable[j][i] != NULL) {
+                printf("%d.\t", j); printList(symTable[j][i]); putchar('\n');
+            }
         }
      }
 }
