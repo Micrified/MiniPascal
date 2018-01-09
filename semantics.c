@@ -48,11 +48,19 @@ static int isTokenClass (unsigned tc, unsigned tt) {
 
 /* Reduces a valid operand type to a primitive type */
 static unsigned reduceValidOperandType (unsigned tt) {
-    if (isPrimitiveOperand(tt)) {
+
+    // Don't reduce primitives.
+    if (isPrimitiveOperand(tt) || TT_UNDEFINED) {
         return tt;
-    } else {
-        return 1 + (tt % 2);
     }
+    
+    // Procedures are an exception.
+    if (tt == TT_PROCEDURE) {
+        return TT_UNDEFINED;
+    }
+
+    // Otherwise reduce.
+    return 1 + (tt % 2);
 }
 
 /*
@@ -256,9 +264,8 @@ void resolveAssignment (varType var, exprType expr) {
     var.tt = reduceValidOperandType(var.tt);
 
     // (3). Verify exprType token-type matches.
-    if (var.tt != expr.tt) {
-        printWarning("Assigned value will be %s!", 
-        (var.tt == TT_INTEGER) ? "truncated" : "promoted");
+    if (var.tt < expr.tt) {
+        printWarning("Assigned value will be truncated!");
     }
 }
 
@@ -295,27 +302,25 @@ void installFunction (unsigned id, unsigned tt) {
 }
 
 /* Installs variables in varList as arguments of function 'id'.
- * 1. Verifies 'id' exists, and has correct token-class.
- * 2. Install local variable with function name in new scope.
- * 3. Verifies variables in varlist have primitive token-types.
- * 4. Verifies variables in varlist have unique names.
+ * 1. Install local variable with function name in new scope.
+ * 2. Verifies variables in varlist have primitive token-types.
+ * 3. Verifies variables in varlist have unique names.
  * Frees varList when finished. Scope must be incremented prior 
  * to using this function.
 */
 void installFunctionArgs (unsigned id, varListType varList) {
     IdEntry *entry, **argv;
 
-    // (1). Verify entry exists, and has token-class TC_FUNCTION.
-    if ((entry = tableContains(identifierAtIndex(id))) == NULL || !isTokenClass(TC_FUNCTION, entry->tt)) {
-        fprintf(stderr, "Error: installFunctionArgs: \"%s\" doesn't exist or doesn't have token-class \"%s\"!\n",
-        identifierAtIndex(id), tokenClassName(TC_FUNCTION));
+    // (*). Obtain entry.
+    if ((entry = tableContains(identifierAtIndex(id))) == NULL) {
+        fprintf(stderr, "Error: installFunctionArgs: \"%s\" must be installed in symtab!\n", identifierAtIndex(id));
         exit(EXIT_FAILURE);
     }
 
-    // (2). Install local variable with same name as function but with primitive type.
+    // (1). Install local variable with same name as function but with primitive type.
     installEntry(newIDEntry(id, reduceValidOperandType(entry->tt)));
 
-    // (3). Verify argument list contains valid token-types.
+    // (2). Verify argument list contains valid token-types.
     for (int i = 0; i < varList.length; i++) {
         printf("Checking no.%d (varType) {.id = %u, .tt = %s}\n", i, varList.list[i].id, tokenTypeName(varList.list[i].tt));
         if (!isPrimitiveOperand(varList.list[i].tt)) {
@@ -333,12 +338,12 @@ void installFunctionArgs (unsigned id, varListType varList) {
         exit(EXIT_FAILURE);
     }
 
-    // (4). Install arguments (should be no existing entries).
+    // (3). Install arguments (should be no existing entries).
     for (int i = 0; i < varList.length; i++) {
         varType v = varList.list[i];
 
         // If entry exists, then duplicate argument name.
-        if (tableContains(identifierAtIndex(v.id)) != NULL) {
+        if (tableScopeContains(identifierAtIndex(v.id)) != NULL) {
             printError("Duplicate parameter names in function \"%s\"!", identifierAtIndex(id));
             return;
         }
@@ -357,17 +362,18 @@ void installFunctionArgs (unsigned id, varListType varList) {
     printSymbolTables();
 }
 
-/* Verifies that expressions supplied to function identified by 'id'
- * match the parameter requirements. Does nothing if 'id' not a function.
- * to be a function when invoking this function.
+/* Verifies that expressions supplied to function or procedure identified by 'id'
+ * match the parameter requirements. Does nothing if 'id' not a routine.
  * 1) Verifies expression list count matches argument count.
  * 2) Verifies expression token-types match argument token-types.
 */
-void verifyFunctionArgs (unsigned id, exprListType exprList) {
+void verifyRoutineArgs (unsigned id, exprListType exprList) {
     IdEntry *entry;
 
-    // (*). Verify argument given is a function. Return otherwise.
-    if ((entry = tableContains(identifierAtIndex(id))) == NULL || !isTokenClass(TC_FUNCTION, entry->tt)) {
+    // (*). Verify argument given is a function or procedure. Return otherwise.
+    if ((entry = tableContains(identifierAtIndex(id))) == NULL || 
+        (!isTokenClass(TC_FUNCTION, entry->tt) && 
+        !(entry->tt == TT_PROCEDURE))) {
         return;
     }
 
@@ -387,14 +393,93 @@ void verifyFunctionArgs (unsigned id, exprListType exprList) {
         }
 
         if (!isPrimitiveOperand(expr.tt)) {
-            printError("Parameter %d of function \"%s\" expected \"%s\" but got \"%s\" instead!",
+            printError("Parameter %d of routine \"%s\" expected \"%s\" but got \"%s\" instead!",
             i + 1, identifierAtIndex(id), tokenTypeName(arg->tt), tokenTypeName(exprList.list[i].tt));
             continue;
         }
 
-        printWarning("Parameter %d of function \"%s\" will be %s!", 
+        printWarning("Parameter %d of routine \"%s\" will be %s!", 
         i + 1, identifierAtIndex(id), (expr.tt == TT_INTEGER) ? "promoted" : "truncated");
     }
+
+    // (*). Free expression list.
+    freeExprList(exprList);
+}
+
+/*
+********************************************************************************
+*                             Procedure Prototypes                             *
+********************************************************************************
+*/
+
+/* Installs a procedure IdEntry into the symbol table.
+* 1. If procedure identifier in use, an error is thrown.
+*/
+void installProcedure (unsigned id) {
+    IdEntry *entry;
+
+    // (1). Verify procedure identifier is unused. Else throw error.
+    if ((entry = tableContains(identifierAtIndex(id))) != NULL) {
+        printError("\"%s\" is already defined as \"%s\"!", identifierAtIndex(id), 
+        tokenTypeName(entry->tt));
+        return;
+    }
+
+    // (*). Install procedure in symbol table with TT_PROCEDURE token-type.
+    entry = installEntry(newIDEntry(id, TT_PROCEDURE));
+}
+
+/* Installs variables in varList as arguments of procedure 'id'.
+ * 1. Verifies variables in varlist have primitive token-types.
+ * 2. Verifies variables in varlist have unique names.
+ * Frees varList when finished. Scope must be incremented prior
+ * to using this function.
+*/
+void installProcedureArgs (unsigned id, varListType varList) {
+    IdEntry *entry, **argv;
+
+    // (*). Obtain entry.
+    if ((entry = tableContains(identifierAtIndex(id))) == NULL) {
+        fprintf(stderr, "Error: installProcedureArgs: \"%s\" must be installed in symtab!\n", identifierAtIndex(id));
+        exit(EXIT_FAILURE);
+    }
+
+    // (1). Verify argument list contains valid token-types.
+    for (int i = 0; i < varList.length; i++) {
+        printf("Checking no.%d (varType) {.id = %u, .tt = %s}\n", i, varList.list[i].id, tokenTypeName(varList.list[i].tt));
+        if (!isPrimitiveOperand(varList.list[i].tt)) {
+            printError("Parameter \"%s\" in procedure \"%s\" has illegal type \"%s\"!", 
+            identifierAtIndex(varList.list[i].id),
+            identifierAtIndex(id),
+            tokenTypeName(varList.list[i].tt));
+            return;
+        }
+    }
+
+    // (*). Allocate pointer array for arguments.
+    if ((argv = malloc(varList.length * sizeof(IdEntry *))) == NULL) {
+        fprintf(stderr, "Error: installProcedureArgs: Couldn't allocate argv!\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // (3). Install arguments (should be no existing entries).
+    for (int i = 0; i < varList.length; i++) {
+        varType v = varList.list[i];
+
+        // If entry exists, then duplicate argument name.
+        if (tableScopeContains(identifierAtIndex(v.id)) != NULL) {
+            printError("Duplicate parameter names in procedure \"%s\"!", identifierAtIndex(id));
+            return;
+        }
+        argv[i] = installEntry(newIDEntry(v.id, v.tt));
+    }
+
+    // (*). Assign argument vector and length to function entry.
+    entry->argc = varList.length;
+    entry->argv = (void **)argv;
+
+    // (5). Free variable list.
+    freeVarList(varList);
 }
 
 /*

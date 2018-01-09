@@ -80,7 +80,7 @@ void resolveAssignment (varType var, exprType expr);
 
 /*
 ********************************************************************************
-*                      Function/Procedure Prototypes                           *
+*                           Function Prototypes                                *
 ********************************************************************************
 */
 
@@ -92,22 +92,39 @@ void resolveAssignment (varType var, exprType expr);
 void installFunction (unsigned id, unsigned tt);
 
 /* Installs variables in varList as arguments of function 'id'.
- * 1. Verifies 'id' exists, and has correct token-class.
- * 2. Install local variable with function name in new scope.
- * 3. Verifies variables in varlist have primitive token-types.
- * 4. Verifies variables in varlist have unique names.
+ * 1. Install local variable with function name in new scope.
+ * 2. Verifies variables in varlist have primitive token-types.
+ * 3. Verifies variables in varlist have unique names.
  * Frees varList when finished. Scope must be incremented prior 
  * to using this function.
 */
 void installFunctionArgs (unsigned id, varListType varList);
 
-/* Verifies that expressions supplied to function identified by 'id'
- * match the parameter requirements. Does nothing if 'id' not a function.
- * to be a function when invoking this function.
+/* Verifies that expressions supplied to function or procedure identified by 'id'
+ * match the parameter requirements. Does nothing if 'id' not a routine.
  * 1) Verifies expression list count matches argument count.
  * 2) Verifies expression token-types match argument token-types.
 */
-void verifyFunctionArgs (unsigned id, exprListType exprList);
+void verifyRoutineArgs (unsigned id, exprListType exprList);
+
+/*
+********************************************************************************
+*                             Procedure Prototypes                             *
+********************************************************************************
+*/
+
+/* Installs a procedure IdEntry into the symbol table.
+* 1. If procedure identifier in use, an error is thrown.
+*/
+void installProcedure (unsigned id);
+
+/* Installs variables in varList as arguments of procedure 'id'.
+ * 1. Verifies variables in varlist have primitive token-types.
+ * 2. Verifies variables in varlist have unique names.
+ * Frees varList when finished. Scope must be incremented prior
+ * to using this function.
+*/
+void installProcedureArgs (unsigned id, varListType varList);
 
 /*
 ********************************************************************************

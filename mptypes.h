@@ -39,6 +39,12 @@
 #define TT_FUNCTION_INTEGER     8
 #define TT_FUNCTION_REAL        9
 
+// Token-Class: Procedures.
+#define TC_PROCEDURE            16
+
+// Token-Types: Procedures.
+#define TT_PROCEDURE            16
+
 /*
 ********************************************************************************
 *                              Bison Dependencies                              *

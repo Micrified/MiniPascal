@@ -164,8 +164,8 @@ subprogramDeclarations  : subprogramDeclarations subprogramDeclaration MP_SCOLON
 subprogramDeclaration : subprogramHead declarations compoundStatement { installVarList($2); decrementScopeLevel(); }
                       ;
 
-subprogramHead  : MP_FUNCTION identifier arguments MP_COLON standardType MP_SCOLON { installFunction($2, $5); incrementScopeLevel();  installFunctionArgs($2, $3); }
-                | MP_PROCEDURE identifier arguments MP_SCOLON                      
+subprogramHead  : MP_FUNCTION identifier arguments MP_COLON standardType MP_SCOLON  { installFunction($2, $5); incrementScopeLevel();  installFunctionArgs($2, $3); }
+                | MP_PROCEDURE identifier arguments MP_SCOLON                       { installProcedure($2); incrementScopeLevel(); installProcedureArgs($2, $3); }                      
                 ;
 
 arguments : MP_POPEN parameterList MP_PCLOSE                      { $$ = $2; }
@@ -198,7 +198,7 @@ variable  : identifier                                            { $$ = initVar
           | identifier MP_BOPEN expression MP_BCLOSE              { requireExprType(TT_INTEGER, $3); $$ = initVarType(resolveTypeClass(identifierAtIndex($1), TC_ARRAY), $1); }                  
 
 procedureStatement  : identifier                                 
-                    | identifier MP_POPEN expressionList MP_PCLOSE
+                    | identifier MP_POPEN expressionList MP_PCLOSE { resolveTypeClass(identifierAtIndex($1), TC_PROCEDURE); verifyRoutineArgs($1, $3);}
                     ;
 
 expressionList  : expression                                      { $$ = insertExprList($1, initExprListType()); }                                                              
@@ -226,8 +226,12 @@ term  : factor                                                    { $$ = $1; }
       ;
 
 factor  : identifier                                              { $$ = initExprType(getTypeElseInstall(identifierAtIndex($1), TT_UNDEFINED), NIL); }
-        | identifier MP_POPEN expressionList MP_PCLOSE            { $$ = initExprType(resolveTypeClass(identifierAtIndex($1), TC_FUNCTION), NIL); verifyFunctionArgs($1, $3); }
-        | identifier MP_BOPEN expression MP_BCLOSE                { requireExprType(TT_INTEGER, $3); $$ = initExprType(resolveTypeClass(identifierAtIndex($1), TC_ARRAY), NIL); } 
+        | identifier MP_POPEN expressionList MP_PCLOSE            { $$ = initExprType(resolveTypeClass(identifierAtIndex($1), TC_FUNCTION), NIL); verifyRoutineArgs($1, $3); }
+        | identifier MP_BOPEN expression MP_BCLOSE                { /* Indexing array requires INTEGER expression */
+                                                                    requireExprType(TT_INTEGER, $3);
+                                                                    /* Return new expression type with primitive of array */
+                                                                    $$ = initExprType(resolveTypeClass(identifierAtIndex($1), TC_ARRAY), NIL); 
+                                                                  } 
         | MP_INTEGER                                              { $$ = initExprType(TT_INTEGER, installNumber(atof(yytext))); }
         | MP_REAL                                                 { $$ = initExprType(TT_REAL, installNumber(atof(yytext))); }
         | MP_POPEN expression MP_PCLOSE                           { $$ = $2; }
