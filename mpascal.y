@@ -127,7 +127,7 @@ int yyerror(char *s) {
 %type <desc> type
 %type <expr> factor term simpleExpression expression 
 %type <exprList> expressionList
-%type <var> variable
+%type <var> variable subprogramHead
 %type <varList> identifierList parameterList arguments declarations
 // Starting Grammar Rule.
 %start program
@@ -183,7 +183,11 @@ subprogramDeclarations  : subprogramDeclarations subprogramDeclaration MP_SCOLON
 subprogramDeclaration : subprogramHead declarations { /* Install declarations in symbol-table */
                                                       installVarList($2); 
                                                     } 
-                        compoundStatement           { /* Drop scope level after end of body */
+                        compoundStatement           { /* If routine is a function, warn if return variable uninitialized  */
+                                                      if ($1.tt != UNDEFINED) {
+                                                        verifyFunctionReturnValue($1.id);
+                                                      }
+                                                      /* Drop scope level after end of body */
                                                       decrementTableScope(); 
                                                     }
                       ;
@@ -194,13 +198,15 @@ subprogramHead  : MP_FUNCTION identifier arguments MP_COLON standardType MP_SCOL
                                                                                         installRoutineArgs($2, $3);
                                                                                       }
                                                                                       freeVarList($3);
+                                                                                      $$ = initVarType(TC_ROUTINE, $5, $2);
                                                                                     }
                 | MP_PROCEDURE identifier arguments MP_SCOLON                       { /* Attempt to install procedure and arguments */
                                                                                       if (installRoutine($2, UNDEFINED)) {
                                                                                         incrementTableScope();
                                                                                         installRoutineArgs($2, $3);
                                                                                       }
-                                                                                      freeVarList($3); 
+                                                                                      freeVarList($3);
+                                                                                      $$ = initVarType(TC_ROUTINE, UNDEFINED, $2);
                                                                                     }                      
                 ;
 

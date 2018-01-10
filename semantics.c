@@ -339,3 +339,21 @@ void verifyRoutineArgs(unsigned id, exprListType exprList) {
         }
     }
 }
+
+/* Verifies that a function routine has an initialized return variable.
+ * This function must be invoked before dropping the table scope level.
+ */
+void verifyFunctionReturnValue (unsigned id) {
+    IdEntry *entry;
+
+    // (*). Extract entry.
+    if ((entry = containsIdEntry(id, TC_SCALAR, currentTableScope())) == NULL) {
+        fprintf(stderr, "Error: verifyFunctionReturnValue: Return variable not in function scope!\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // (*). Verify initialization.
+    if (entry->rf == 0) {
+        printError("Return value for function \"%s\" is uninitialized!", identifierAtIndex(id));
+    }
+}
