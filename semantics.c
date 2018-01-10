@@ -181,7 +181,7 @@ varType initVarTypeFromId (unsigned id, unsigned tc) {
 void verifyAssignment (varType var, exprType expr) {
 
     // (1). Verify variable token-class is assignable.
-    if (var.tc != TC_SCALAR) {
+    if (var.tc != TC_SCALAR && var.tc != TC_VECTOR) {
         printError("\"%s\" of class \"%s\" is not assignable!",
         identifierAtIndex(var.id), tokenClassName(var.tc));
         return;

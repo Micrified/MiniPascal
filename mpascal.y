@@ -213,7 +213,7 @@ variable  : identifier                                            { if (existsId
                                                                   }                                                                                     
           | identifier MP_BOPEN expression MP_BCLOSE              { if (existsId($1, TC_VECTOR)) {
                                                                       requireExprType(TT_INTEGER, $3); 
-                                                                      $$ = initVarTypeFromId($1, TC_VECTOR); 
+                                                                      $$ = initVarType(TC_VECTOR, getIdTokenType($1, TC_VECTOR), $1);
                                                                     }
                                                                   }                  
 

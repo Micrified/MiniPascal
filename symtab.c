@@ -113,7 +113,7 @@ static void printList (Node *lp) {
     if (lp == NULL) {
         printf("[NULL]");
     } else {
-        printf("[%s]->", identifierAtIndex(lp->entry->id));
+        printf("[%s : %s : %s]->", identifierAtIndex(lp->entry->id), tokenClassName(lp->entry->tc), tokenTypeName(lp->entry->tt ));
         printList(lp->next);
     }
 }
