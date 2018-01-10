@@ -338,7 +338,4 @@ void verifyRoutineArgs(unsigned id, exprListType exprList) {
                 i, identifierAtIndex(id));
         }
     }
-
-    // (*). Free expression list.
-    freeExprList(exprList);
 }

@@ -206,14 +206,12 @@ statement : variable MP_ASSIGNOP expression                       { verifyAssign
           ;
 
 variable  : identifier                                            { if (existsId($1, TC_SCALAR)) {
-                                                                      printSymbolTables();
                                                                       $$ = initVarTypeFromId($1, TC_SCALAR); 
                                                                     } else {
                                                                       $$ = initVarType(UNDEFINED, UNDEFINED, $1);
                                                                     }
                                                                   }                                                                                     
           | identifier MP_BOPEN expression MP_BCLOSE              { if (existsId($1, TC_VECTOR)) {
-                                                                      printSymbolTables();
                                                                       requireExprType(TT_INTEGER, $3); 
                                                                       $$ = initVarTypeFromId($1, TC_VECTOR); 
                                                                     }
