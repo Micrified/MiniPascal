@@ -100,5 +100,9 @@ void installRoutineArgs (unsigned id, varListType varList);
 */
 void verifyRoutineArgs (unsigned id, exprListType exprList);
 
+/* Verifies that a function routine has an initialized return variable.
+ * This function must be invoked before dropping the table scope level.
+ */
+void verifyFunctionReturnValue (unsigned id);
 
 #endif
