@@ -1,5 +1,5 @@
-#if !defined(SEMANTICS_H)
-#define SEMANTICS_H
+#if !defined(SYMANTICS_H)
+#define SYMANTICS_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,94 +11,87 @@
 
 /*
 ********************************************************************************
-*                              General Prototypes                              *
-********************************************************************************
-*/
-
-
-/*
-********************************************************************************
 *                             Identifier Prototypes                            *
 ********************************************************************************
 */
 
-/* Returns token-type of identifier. If no entry, one is made with type `tt`. */
-unsigned getTypeElseInstall (const char *identifier, unsigned tt);
+/* Returns zero and throws error if id of type-class tc isn't in symbol table. */
+unsigned existsId (unsigned id, unsigned tc);
 
-/* Returns token-type of identifier. If no entry, an error is thrown */
-unsigned getTypeElseError (const char *identifier);
+/* Returns nonzero if the given id of type-class tc has been initialized. */
+unsigned isInitialized (unsigned id, unsigned tc);
 
-/* Throws an error if the identifier entry is not of the expected class */
-void requireIdClass (const char *identifier, unsigned class);
+/* Returns the token-type for an identifier. Must exist in symbol table. */
+unsigned getIdTokenType (unsigned id, unsigned tc);
 
 /*
 ********************************************************************************
-*                            Expression Prototypes                             *
+*                             Expression Prototypes                            *
 ********************************************************************************
 */
 
-/* Throws an error if the exprType token-type doesn't match type `tt` */
-void requireExprType(unsigned tt, exprType expr);
+/* Throws error if expression type isn't of given token-type */
+void requireExprType (unsigned tt, exprType expr);
 
-/* Throws an error if the exprType token-type isn't of TT_INTEGER for guards */
-void verifyGuardExpr (exprType expr);
-
-/* Returns primitive token-type for expected type the given class.
- * 1. Throws undefined-type error if no IdEntry exists for given identifier.
- * 2. Throws unexpected-type error if IdEntry doesn't match expected class.
- * Resolves class to primitive token-type (integer or real).
-*/
-unsigned resolveTypeClass (const char *identifier,  unsigned class);
-
-/* Returns resulting exprType of an arithmetic operation between two exprTypes. 
+/* Returns resulting exprType of an operation between two exprTypes. 
  * 1. If operator involves division, throw div-zero-error if 'b' is zero.
- * 2. If operands are both primitives but mismatching, throw warning.
- * 3. If any operand has no constant value, then result is just the type.
- * Results are type-promoted in case of (2). */ 
+ * 2. If any operand has no constant value, then result is just the token-type.
+ * Results are type-promoted to reals if operands mismatch.  */ 
 exprType resolveArithmeticOperation (unsigned operator, exprType a, exprType b);
 
 /* Returns resulting exprType for a boolean operation between two exprTypes.
  * 1. If any operand is undefined, an error is thrown.
- * 2. If operators are both primitives but mismatching, throw warning.
- * 3. If any operand has no constant value, then result is just type MP_INTEGER.
+ * 2. If any operand has no constant value, then result is just type MP_INTEGER.
  * Results of comparisons are always MP_INTEGER where defined.
 */
 exprType resolveBooleanOperation (unsigned operator, exprType a, exprType b);
 
+
+/* Throws an warning if the token-type of the expression isn't an integer */
+void verifyGuardExpr (exprType expr);
+
 /*
 ********************************************************************************
-*                            Assignment Prototypes                             *
+*                             Variable Prototypes                              *
 ********************************************************************************
 */
+
+/* Extracts an IdEntry from the symbol table and initializes a varType instance.
+ * Requires the IdEntry to already exist.
+*/
+varType initVarTypeFromId (unsigned id, unsigned tc);
 
 /* Resolves assignment of expression to variable.
- * 1. If variable token-type is not primitive, an error is thrown.
- * 2. If expression token-type is not primitive, an error is thrown.
+ * 1. If variable token-class is not scalar, an error is thrown.
+ * 2. If expression token-type is undefined, an error is thrown.
  * 3. Type promotion or truncation occurs in case of mismatching primitives.
+ * 4. Sets the reference flag (rf) to true.
  */ 
-void resolveAssignment (varType var, exprType expr);
+void verifyAssignment (varType var, exprType expr);
+
+/* Maps a descriptor type to a list of varTypes. Returns varListType instance */
+varListType mapDescToVarList (descType desc, varListType varList);
+
+/* Installs a list of varTypes into the symbol table. 
+ * 1. Verifies no variable already exists in current scope
+ */
+void installVarList (varListType varList);
 
 /*
 ********************************************************************************
-*                           Function Prototypes                                *
+*                              Routine Prototypes                            *
 ********************************************************************************
 */
 
-/* Installs a function IdEntry into the symbol table.
- * 1. If function identifier in use, an error is thrown.
- * 2. If function has non-primitive return type, an error is thrown.
- * Function is installed with FUNCTION class variant of token-type.
+/* Installs a routine in the symbol table under 'id'.
+ * 1) Verify id is unused (no entry in symbol table).
+ * Procedures are identifier with an UNDEFINED token-type.
+ * Returns nonzero if successful.
 */
-void installFunction (unsigned id, unsigned tt);
+unsigned installRoutine (unsigned id, unsigned tt);
 
-/* Installs variables in varList as arguments of function 'id'.
- * 1. Install local variable with function name in new scope.
- * 2. Verifies variables in varlist have primitive token-types.
- * 3. Verifies variables in varlist have unique names.
- * Frees varList when finished. Scope must be incremented prior 
- * to using this function.
-*/
-void installFunctionArgs (unsigned id, varListType varList);
+/* Installs all routine arguments in the symbol table under 'id'. */
+void installRoutineArgs (unsigned id, varListType varList);
 
 /* Verifies that expressions supplied to function or procedure identified by 'id'
  * match the parameter requirements. Does nothing if 'id' not a routine.
@@ -107,32 +100,5 @@ void installFunctionArgs (unsigned id, varListType varList);
 */
 void verifyRoutineArgs (unsigned id, exprListType exprList);
 
-/*
-********************************************************************************
-*                             Procedure Prototypes                             *
-********************************************************************************
-*/
 
-/* Installs a procedure IdEntry into the symbol table.
-* 1. If procedure identifier in use, an error is thrown.
-*/
-void installProcedure (unsigned id);
-
-/* Installs variables in varList as arguments of procedure 'id'.
- * 1. Verifies variables in varlist have primitive token-types.
- * 2. Verifies variables in varlist have unique names.
- * Frees varList when finished. Scope must be incremented prior
- * to using this function.
-*/
-void installProcedureArgs (unsigned id, varListType varList);
-
-/*
-********************************************************************************
-*                           Declaration Prototypes                             *
-********************************************************************************
-*/
-
-/* Installs all given variables into the symbol table, then frees the list */
-void installVarList (varListType varList);
-
-#endif 
+#endif

@@ -18,8 +18,8 @@
 ********************************************************************************
 */
 
-// Token-Type: Undefined.
-#define TT_UNDEFINED    0
+// Type: Undefined.
+#define UNDEFINED    0
 
 // Token-Type: Primitives.
 #define TT_INTEGER      1
@@ -36,6 +36,12 @@
 ********************************************************************************
 */
 
+// YYSTYPE: Descriptor data type.
+typedef struct {
+    unsigned tc;            // Token-Class.
+    unsigned tt;            // Token-Type.
+} descType;
+
 // YYSTYPE: Expression data type.
 typedef struct {
     unsigned    tt;         // Token-Type.
@@ -51,6 +57,7 @@ typedef struct {
 // YYSTYPE: Variable data type.
 typedef struct {
     unsigned tc;            // Token-Class.
+    unsigned tt;            // Token-Type.
     unsigned id;            // Identifier-Index: Index of the identifier in strtab.
 } varType;
 
@@ -78,7 +85,9 @@ const char *tokenClassName (unsigned tc);
 ********************************************************************************
 */
 
-/* Initializes a new exprType with given token-type (tt) and value-index (vi) */
+/* Initializes a new exprType with given token-type (tt),
+ * and value-index (vi).
+*/
 exprType initExprType (unsigned tt, unsigned vi);
 
 /*
@@ -91,7 +100,7 @@ exprType initExprType (unsigned tt, unsigned vi);
 exprListType initExprListType (void);
 
 /* Frees allocated memory in an exprListType */
-void freeExprList(exprListType exprList);
+void freeExprList (exprListType exprList);
 
 /* Allocates a copy of the given exprType and places it in returned exprList list. */
 exprListType insertExprList (exprType expr, exprListType exprList);
@@ -102,8 +111,10 @@ exprListType insertExprList (exprType expr, exprListType exprList);
 ********************************************************************************
 */
 
-/* Initializes a new varType with the given token-class (tc) and identifier-index (id) */
-varType initVarType (unsigned tc, unsigned id);
+/* Initializes a new varType with the given token-class (tc), token-type (tt) and 
+ *identifier-index (id).
+*/
+varType initVarType (unsigned tc, unsigned tt, unsigned id);
 
 /*
 ********************************************************************************
@@ -119,9 +130,6 @@ void freeVarList(varListType varList);
 
 /* Allocates a copy of the given varType and places it in returned varList list. */
 varListType insertVarType (varType var, varListType varList);
-
-/* Maps the given token-class to the list of varTypes in the varList list. */
-varListType mapTokenTypeToVarList (unsigned tc, varListType varList);
 
 /* Appends the first varListType list to second varListType */
 varListType appendVarList (varListType suffix, varListType prefix);

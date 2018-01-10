@@ -9,7 +9,7 @@
 /* Returns a string associated with the given token-type */
 const char *tokenTypeName (unsigned tt) {
     switch (tt) {
-        case TT_UNDEFINED:          return "Undefined";
+        case UNDEFINED:             return "Undefined";
         case TT_INTEGER:            return "Integer";
         case TT_REAL:               return "Real";
     }
@@ -19,6 +19,7 @@ const char *tokenTypeName (unsigned tt) {
 /* Returns a string associated with the given token-class */
 const char *tokenClassName (unsigned tc) {
     switch (tc) {
+        case UNDEFINED:             return "Undefined";
         case TC_SCALAR:             return "Scalar";
         case TC_VECTOR:             return "Vector";
         case TC_ROUTINE:            return "Routine";
@@ -31,7 +32,9 @@ const char *tokenClassName (unsigned tc) {
 ********************************************************************************
 */
 
-/* Initializes a new exprType with given token-type (tt) and value-index (vi) */
+/* Initializes a new exprType with given token-type (tt),
+ * and value-index (vi).
+*/
 exprType initExprType (unsigned tt, unsigned vi) {
     return (exprType){.tt = tt, .vi = vi};
 }
@@ -71,9 +74,11 @@ exprListType insertExprList (exprType expr, exprListType exprList) {
 ********************************************************************************
 */
 
-/* Initializes a new varType with the given token-class (tc) and identifier-index (id) */
-varType initVarType (unsigned tc, unsigned id) {
-    return (varType){.tc = tc, .id = id};
+/* Initializes a new varType with the given token-class (tc), token-type (tt) and 
+ *identifier-index (id).
+*/
+varType initVarType (unsigned tc, unsigned tt, unsigned id) {
+    return (varType){.tc = tc, .tt = tt, .id = id};
 }
 
 /*
@@ -102,15 +107,6 @@ varListType insertVarType (varType var, varListType varList) {
 
     varList.list[varList.length++] = var;
     
-    return varList;
-}
-
-/* Maps the given token-class to the list of varTypes in the varList list. */
-varListType mapTokenTypeToVarList (unsigned tc, varListType varList) {
-
-    for (int i = 0; i < varList.length; i++) {
-        varList.list[i].tc = tc;
-    }
     return varList;
 }
 

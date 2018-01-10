@@ -4,7 +4,7 @@
 
 /*
 ********************************************************************************
-*                          Private Semantic Routines                           *
+*                         Internal Expression Functions                        *
 ********************************************************************************
 */
 
@@ -26,89 +26,45 @@ static double performOperation (unsigned operator, double a, double b) {
         case MP_RELOP_GT: return (a > b);
         case MP_RELOP_NE: return (a != b);
     }
-    printError("performOperation: Unknown operator %d\n", operator);
+    fprintf(stderr, "Error: performOperation: Unknown operator %d\n", operator);
     exit(EXIT_FAILURE);
-}
-
-/* Returns nonzero if the given token-type may be used in an arithmetic operation */
-static int isValidOperand (unsigned tt, unsigned *tp) {
-    *tp = tt;
-    return (tt > TT_UNDEFINED && tt <= TT_FUNCTION_REAL);
-}
-
-/* Returns nonzero if the given token-type is a primitive */
-static int isPrimitiveOperand (unsigned tt) {
-    return (tt > TT_UNDEFINED && tt < TC_ARRAY);
-}
-
-/* Returns nonzero if the given token-type is of the given token-class */
-static int isTokenClass (unsigned tc, unsigned tt) {
-    return (tt & tc);
-}
-
-/* Reduces a valid operand type to a primitive type */
-static unsigned reduceValidOperandType (unsigned tt) {
-
-    // Don't reduce primitives.
-    if (isPrimitiveOperand(tt) || TT_UNDEFINED) {
-        return tt;
-    }
-    
-    // Procedures are an exception.
-    if (tt == TT_PROCEDURE) {
-        return TT_UNDEFINED;
-    }
-
-    // Otherwise reduce.
-    return 1 + (tt % 2);
 }
 
 /*
 ********************************************************************************
-*                           Identifier Functions                               *
+*                             Identifier Functions                             *
 ********************************************************************************
 */
 
-/* Returns token type of identifier. If no entry, one is made with type `tt`. */
-unsigned getTypeElseInstall (const char *identifier, unsigned tt) {
+
+/* Returns zero and throws error if id of type-class tc isn't in symbol table. */
+unsigned existsId (unsigned id, unsigned tc) {
     IdEntry *entry;
 
-    // Check if entry exists, otherwise install with type `tt`.
-    if ((entry = tableContains(identifier)) == NULL) {
-        entry = installEntry(newIDEntry(installId(identifier), tt));
+    if ((entry = containsIdEntry(id, tc, SYMTAB_SCOPE_ALL)) == NULL) {
+        printError("Expected identifier \"%s\" of class \"%s\", but none exists!",
+            identifierAtIndex(id),
+            tokenClassName(tc));
+        return 0;
     }
-
-    return entry->tt;
+    return 1;
 }
 
-/* Returns token-type of identifier. If no entry, an error is thrown. */
-unsigned getTypeElseError (const char *identifier) {
-    IdEntry *entry;
-
-    // Check if entry exists, otherwise throw error.
-    if ((entry = tableContains(identifier)) == NULL) {
-        printError("\"%s\" is undefined!", identifier);
-        return TT_UNDEFINED;
+/* Returns nonzero and throws error if the given id of type-class tc has been initialized. */
+unsigned isInitialized (unsigned id, unsigned tc) {
+    IdEntry *entry = containsIdEntry(id, tc, SYMTAB_SCOPE_ALL);
+    if (entry->rf == 0) {
+        printError("\"%s\" of class \"%s\" exists but is uninitialized!", 
+            identifierAtIndex(id),
+            tokenClassName(tc));
     }
-
-    return entry->tt;
+    return entry->rf;
 }
 
-/* Throws an error if the identifier entry is not of the expected class */
-void requireIdClass (const char *identifier, unsigned class) {
-    IdEntry *entry;
-
-    // (*). Check if entry exists, otherwise throw error.
-    if ((entry = tableContains(identifier)) == NULL) {
-        printError("\"%s\" is undefined!");
-    }
-
-    // (*). Verify token-type is of expected class.
-    if ((entry->tt & class) == 0) {
-        printError("\"%s\" is not of expected type-class \"%s\"!", 
-        tokenTypeName(entry->tt), 
-        tokenClassName(class));
-    }
+/* Returns the token-type for an identifier. Must exist in symbol table. */
+unsigned getIdTokenType (unsigned id, unsigned tc) {
+    IdEntry *entry = containsIdEntry(id, tc, SYMTAB_SCOPE_ALL);
+    return entry->tt;
 }
 
 /*
@@ -117,78 +73,36 @@ void requireIdClass (const char *identifier, unsigned class) {
 ********************************************************************************
 */
 
-/* Throws an error if the exprType token-type doesn't match type `tt` */
-void requireExprType(unsigned tt, exprType expr) {
+/* Throws error if expression type isn't of given token-type */
+void requireExprType (unsigned tt, exprType expr) {
     if (expr.tt != tt) {
         printError("Expected type \"%s\", but got type \"%s\" instead!", 
         tokenTypeName(tt), tokenTypeName(expr.tt));
     }
 }
 
-/* Throws an error if the exprType token-type isn't of TT_INTEGER for guards */
-void verifyGuardExpr (exprType expr) {
-    if (expr.tt != TT_INTEGER) {
-        printError("Guard expression has type \"%s\". Only type \"%s\" allowed!", 
-        tokenTypeName(expr.tt), tokenTypeName(TT_INTEGER));
-    }
-}
-
-/* Returns primitive token-type for expected type the given class.
- * 1. Throws undefined-type error if no IdEntry exists for given identifier.
- * 2. Throws unexpected-type error if IdEntry doesn't match expected class.
- * Resolves class to primitive token-type (integer or real).
-*/
-unsigned resolveTypeClass (const char *identifier,  unsigned class) {
-    IdEntry *entry;
-
-    // Verify: IdEntry exists. 
-    if ((entry = tableContains(identifier)) == NULL) {
-        printError("\"%s\" is undefined!", identifier);
-        return TT_UNDEFINED;
-    }
-
-    // Verify: Token-Type is of expected class.
-    if ((entry->tt & class) == 0) {
-        printError("\"%s\" is not of expected type-class \"%s\"!", identifier, tokenClassName(class));
-        return TT_UNDEFINED;
-    }
-
-    // Resolve class to primitive: 1 + (tt % 2) => (integer = 1, real = 2).
-    return reduceValidOperandType(entry->tt);
-}
-
 /* Returns resulting exprType of an operation between two exprTypes. 
- * 1. If operands are both primitives but mismatching, throw warning.
- * 2. If operator involves division, throw div-zero-error if 'b' is zero.
- * 3. If any operand has no constant value, then result is just the type.
- * Results are type-promoted in case of (2). */ 
+ * 1. If operator involves division, throw div-zero-error if 'b' is zero.
+ * 2. If any operand has no constant value, then result is just the token-type.
+ * Results are type-promoted to reals if operands mismatch.  */ 
 exprType resolveArithmeticOperation (unsigned operator, exprType a, exprType b) {
-    unsigned t;
     double *vp;
 
     // (*). Verify operands are valid.
-    if (!isValidOperand(a.tt, &t) || !isValidOperand(b.tt, &t)) {
-        printError("Arithmetic operation is undefined for type: \"%s\"!\n", tokenTypeName(t));
-        return (exprType){.tt = TT_UNDEFINED, .vi = NIL};
+    if (a.tt == UNDEFINED || b.tt == UNDEFINED) {
+        printError("Arithmetic operation is undefined for operands of type: \"%s\"!\n", 
+        tokenTypeName(UNDEFINED));
+        return (exprType){.tt = UNDEFINED, .vi = NIL};
     }
 
-    // (*). Reduce types to primitives if necessary.
-    a.tt = reduceValidOperandType(a.tt);
-    b.tt = reduceValidOperandType(b.tt);
-
-    // (1). Throw warning if primitive types mismatch.
-    if (isPrimitiveOperand(a.tt) && isPrimitiveOperand(b.tt) && a.tt != b.tt) {
-        printWarning("Mismatching types in arithmetic expression!");
-    }
-
-    // (2). Check for division by zero. 
+    // (1). Check for division by zero. 
     if ((operator == MP_DIVOP || operator == MP_MODOP) && 
         (vp = numberAtIndex(b.vi)) != NULL && (*vp == 0.0)) {
         printError("Division by zero!");
-        return (exprType){.tt = TT_UNDEFINED, .vi = NIL};
+        return (exprType){.tt = UNDEFINED, .vi = NIL};
     }
 
-    // (3). Determine resulting constant value.
+    // (2). Determine resulting constant value.
     double *avp, *bvp, newValueIndex;
     if ((avp = numberAtIndex(a.vi)) == NULL || (bvp = numberAtIndex(b.vi)) == NULL) {
         newValueIndex = NIL;
@@ -200,31 +114,22 @@ exprType resolveArithmeticOperation (unsigned operator, exprType a, exprType b) 
     return (exprType){.tt = MAX(a.tt, b.tt), .vi = newValueIndex};
 }
 
+
 /* Returns resulting exprType for a boolean operation between two exprTypes.
  * 1. If any operand is undefined, an error is thrown.
- * 2. If operators are both primitives but mismatching, throw warning.
- * 3. If any operand has no constant value, then result is just type MP_INTEGER.
+ * 2. If any operand has no constant value, then result is just type MP_INTEGER.
  * Results of comparisons are always MP_INTEGER where defined.
 */
 exprType resolveBooleanOperation (unsigned operator, exprType a, exprType b) {
-    unsigned t;
 
     // (1). Verify operands are valid!
-    if (!isValidOperand(a.tt, &t) || !isValidOperand(b.tt, &t)) {
-        printError("Boolean operation is undefined for type: \"%s\"!\n", tokenTypeName(t));
-        return (exprType){.tt = TT_UNDEFINED, .vi = NIL};
+    if (a.tt == UNDEFINED || b.tt == UNDEFINED) {
+        printError("Boolean operation is undefined for operands of type: \"%s\"!\n", 
+        tokenTypeName(UNDEFINED));
+        return (exprType){.tt = UNDEFINED, .vi = NIL};
     }
 
-    // (*). Reduce types to primitives if necessary.
-    a.tt = reduceValidOperandType(a.tt);
-    b.tt = reduceValidOperandType(b.tt);
-
-    // (2). Throw warning if primitive types mismatch.
-    if (isPrimitiveOperand(a.tt) && isPrimitiveOperand(b.tt) && a.tt != b.tt) {
-        printWarning("Mismatching types in boolean expression!");
-    }
-
-    // (3). Determine resulting constant value.
+    // (2). Determine resulting constant value.
     double *avp, *bvp, newValueIndex;
     if ((avp = numberAtIndex(a.vi)) == NULL || (bvp = numberAtIndex(b.vi)) == NULL) {
         newValueIndex = NIL;
@@ -235,131 +140,171 @@ exprType resolveBooleanOperation (unsigned operator, exprType a, exprType b) {
     return (exprType){.tt = TT_INTEGER, .vi = newValueIndex};
 }
 
-/*
-********************************************************************************
-*                             Assignment Functions                             *
-********************************************************************************
-*/
-
-/* Resolves assignment of expression to variable.
- * 1. If variable token-type is not primitive, an error is thrown.
- * 2. If expression token-type is not primitive, an error is thrown.
- * 3. Type promotion or truncation occurs in case of mismatching primitives.
- */ 
-void resolveAssignment (varType var, exprType expr) {
-
-    // (1). Verify variable token-type is assignable.
-    if (!isPrimitiveOperand(var.tt)) {
-        printError("\"%s\" of type \"%s\" is not assignable!",
-        identifierAtIndex(var.id), tokenTypeName(var.tt));
+/* Throws an warning if the token-type of the expression isn't an integer */
+void verifyGuardExpr (exprType expr) {
+    if (expr.tt == UNDEFINED) {
+        printError("Invalid guard expression of type \"%s\"!", tokenTypeName(expr.tt));
+        return;
     }
-
-    // (2). Verify that expression token-type is primitive.
-    if (!isPrimitiveOperand(expr.tt)) {
-        printError("\"%s\" may not be assigned to \"%s\"!", 
-        tokenTypeName(expr.tt), tokenTypeName(var.tt));
-    }
-
-    // (*). Reduce variable token-type.
-    var.tt = reduceValidOperandType(var.tt);
-
-    // (3). Verify exprType token-type matches.
-    if (var.tt < expr.tt) {
-        printWarning("Assigned value will be truncated!");
+    if (expr.tt != TT_INTEGER) {
+        printWarning("Guard expression will be truncated!");
     }
 }
 
 /*
 ********************************************************************************
-*                        Function/Procedure Functions                          *
+*                             Variable Functions                               *
 ********************************************************************************
 */
 
-/* Installs a function IdEntry into the symbol table.
- * 1. If function identifier in use, an error is thrown.
- * 2. If function has non-primitive return type, an error is thrown.
- * Function is installed with FUNCTION class variant of token-type.
+/* Extracts an IdEntry from the symbol table and initializes a varType instance.
+ * Requires the IdEntry to already exist.
 */
-void installFunction (unsigned id, unsigned tt) {
+varType initVarTypeFromId (unsigned id, unsigned tc) {
     IdEntry *entry;
 
-    // (1). Verify function identifier is unused. Else throw error.
-    if ((entry = tableContains(identifierAtIndex(id))) != NULL) {
-        printError("\"%s\" is already defined as \"%s\"!", identifierAtIndex(id), 
-        tokenTypeName(entry->tt));
-        return;
-    }
-
-    // (2). Verify function return token-type is  a primitive. Else throw error.
-    if (!isPrimitiveOperand(tt)) {
-        printError("\"%s\" is not a valid function return type!", tokenTypeName(tt));
-        return;
-    }
-
-    // (*). Install function in symbol table with function-class of given token-type.
-    unsigned ft = (tt == TT_INTEGER) ? TT_FUNCTION_INTEGER : TT_FUNCTION_REAL;
-    entry = installEntry(newIDEntry(id, ft));
-}
-
-/* Installs variables in varList as arguments of function 'id'.
- * 1. Install local variable with function name in new scope.
- * 2. Verifies variables in varlist have primitive token-types.
- * 3. Verifies variables in varlist have unique names.
- * Frees varList when finished. Scope must be incremented prior 
- * to using this function.
-*/
-void installFunctionArgs (unsigned id, varListType varList) {
-    IdEntry *entry, **argv;
-
-    // (*). Obtain entry.
-    if ((entry = tableContains(identifierAtIndex(id))) == NULL) {
-        fprintf(stderr, "Error: installFunctionArgs: \"%s\" must be installed in symtab!\n", identifierAtIndex(id));
+    // (*). Extract IdEntry, verify exists.
+    if ((entry = containsIdEntry(id, tc, SYMTAB_SCOPE_ALL)) == NULL) {
+        fprintf(stderr, "Error: initVarTypeFromId: Null entry for \"%s\"!\n", identifierAtIndex(id));
         exit(EXIT_FAILURE);
     }
 
-    // (1). Install local variable with same name as function but with primitive type.
-    installEntry(newIDEntry(id, reduceValidOperandType(entry->tt)));
+    return initVarType(entry->tc, entry->tt, id);
+}
 
-    // (2). Verify argument list contains valid token-types.
+/* Resolves assignment of expression to variable.
+ * 1. If variable token-class is not scalar, an error is thrown.
+ * 2. If expression token-type is undefined, an error is thrown.
+ * 3. Type promotion or truncation occurs in case of mismatching primitives.
+ * 4. Sets the reference flag (rf) to true.
+ */ 
+void verifyAssignment (varType var, exprType expr) {
+
+    // (1). Verify variable token-class is assignable.
+    if (var.tc != TC_SCALAR) {
+        printError("\"%s\" of class \"%s\" is not assignable!",
+        identifierAtIndex(var.id), tokenClassName(var.tc));
+        return;
+    }
+
+    // (2). Verify that expression token-type is primitive.
+    if (expr.tt == UNDEFINED) {
+        printError("\"%s\" may not be assigned to \"%s\" \"%s\"!", 
+        tokenTypeName(expr.tt), tokenClassName(var.tc), tokenClassName(var.tt));
+        return;
+    }
+
+    // (*). Extract token-type of id in var. Expects IdEntry to exist.
+    IdEntry *entry = containsIdEntry(var.id, var.tc, SYMTAB_SCOPE_ALL);
+
+    // (3). Verify exprType token-type matches.
+    if (entry->tt < expr.tt) {
+        printWarning("Value assigned to \"%s\" \"%s\" will be truncated!",
+            tokenTypeName(entry->tt),
+            identifierAtIndex(var.id)
+        );
+    }
+
+    // (4). Set referenced flag to true.
+    entry->rf = 1;
+}
+
+/* Maps a descriptor type to a list of varTypes. Returns varListType instance */
+varListType mapDescToVarList (descType desc, varListType varList) {
     for (int i = 0; i < varList.length; i++) {
-        printf("Checking no.%d (varType) {.id = %u, .tt = %s}\n", i, varList.list[i].id, tokenTypeName(varList.list[i].tt));
-        if (!isPrimitiveOperand(varList.list[i].tt)) {
-            printError("Parameter \"%s\" in function \"%s\" has illegal type \"%s\"!", 
-            identifierAtIndex(varList.list[i].id),
-            identifierAtIndex(id),
-            tokenTypeName(varList.list[i].tt));
+        varList.list[i].tc = desc.tc;
+        varList.list[i].tt = desc.tt;
+    }
+    return varList;
+}
+
+/* Installs a list of varTypes into the symbol table. 
+ * 1. Verifies no variable already exists in current scope
+ */
+void installVarList (varListType varList) {
+    IdEntry *entry;
+
+    for (int i = 0; i < varList.length; i++) {
+        varType var = varList.list[i];
+        if ((entry = containsIdEntry(var.id, var.tc, currentTableScope())) != NULL) {
+            printError("Redeclaration of \"%s\" \"%s\" in current scope!",
+                tokenClassName(var.tc), identifierAtIndex(var.id));
+        } else {
+            installIdEntry(var.id, var.tc, var.tt);
+        }
+    }
+}
+
+/*
+********************************************************************************
+*                              Routine Functions                               *
+********************************************************************************
+*/
+
+/* Installs a routine in the symbol table under 'id'.
+ * 1) Verify id is unused (no entry in symbol table).
+ * Procedures are identifier with an UNDEFINED token-type.
+ * Returns nonzero if successful.
+*/
+unsigned installRoutine (unsigned id, unsigned tt) {
+    IdEntry *entry;
+
+    // (1). Verify id is unused.
+    if ((entry = containsIdEntry(id, TC_ROUTINE, SYMTAB_SCOPE_ALL)) != NULL) {
+        printError("Illegal redefinition of \"%s\" \"%s\"!",
+            tokenClassName(entry->tc), identifierAtIndex(id));
+        return 0;
+    }
+
+    // (*). Install routine in symbol table.
+    installIdEntry(id, TC_ROUTINE, tt);
+    return 1;
+}
+
+/* Installs all routine arguments in the symbol table under 'id'. */
+void installRoutineArgs (unsigned id, varListType varList) {
+    IdEntry *arg, **argv;
+
+    // (*). Extract IdEntry.
+    IdEntry *entry = containsIdEntry(id, TC_ROUTINE, SYMTAB_SCOPE_ALL);
+
+    // (*). Install new local scalar with routine token-type if function.
+    if (entry->tt != UNDEFINED) {
+        installIdEntry(id, TC_SCALAR, entry->tt);
+    }
+
+    // (*). Verify argument-list token-class is scalar.
+    for (int i = 0; i < varList.length; i++) {
+        varType var = varList.list[i];
+        if (var.tc != TC_SCALAR) {
+            printError("Parameter \"%s\" in routine \"%s\" has illegal type-class \"%s\"!",
+            identifierAtIndex(var.id), identifierAtIndex(id), tokenClassName(var.tc));
             return;
         }
     }
 
     // (*). Allocate pointer array for arguments.
     if ((argv = malloc(varList.length * sizeof(IdEntry *))) == NULL) {
-        fprintf(stderr, "Error: installFunction: Couldn't allocate argv!\n");
+        fprintf(stderr, "Error: installRoutineArgs: Couldn't allocate pointer array!\n");
         exit(EXIT_FAILURE);
     }
 
-    // (3). Install arguments (should be no existing entries).
+    // (*). Install arguments (should be no existing entries).
     for (int i = 0; i < varList.length; i++) {
-        varType v = varList.list[i];
-
-        // If entry exists, then duplicate argument name.
-        if (tableScopeContains(identifierAtIndex(v.id)) != NULL) {
-            printError("Duplicate parameter names in function \"%s\"!", identifierAtIndex(id));
+        varType var = varList.list[i];
+        if (containsIdEntry(var.id, var.tc, currentTableScope())) {
+            printError("Duplicate parameters (\"%s\" \"%s\") in function \"%s\"!",
+            tokenClassName(var.tc), identifierAtIndex(var.id), identifierAtIndex(id));
             return;
         }
-        argv[i] = installEntry(newIDEntry(v.id, v.tt));
+        arg = installIdEntry(var.id, var.tc, var.tt);
+        arg->rf = 1;
+        argv[i] = copyIdEntry(arg);
     }
 
-    // (*). Assign argument vector and length to function entry.
-    entry->argc = varList.length;
-    entry->argv = (void **)argv;
-
-    // (5). Free variable list.
-    freeVarList(varList);
-
-    printf("DEBUG: Verify tables match expected state!\n");
-    printStringTable();
-    printSymbolTables();
+    // (*). Assign argument vector and length to IdEntry entry.
+    entry->data.argc = varList.length;
+    entry->data.argv = (void **)argv;
 }
 
 /* Verifies that expressions supplied to function or procedure identified by 'id'
@@ -367,145 +312,33 @@ void installFunctionArgs (unsigned id, varListType varList) {
  * 1) Verifies expression list count matches argument count.
  * 2) Verifies expression token-types match argument token-types.
 */
-void verifyRoutineArgs (unsigned id, exprListType exprList) {
+void verifyRoutineArgs(unsigned id, exprListType exprList) {
     IdEntry *entry;
 
-    // (*). Verify argument given is a function or procedure. Return otherwise.
-    if ((entry = tableContains(identifierAtIndex(id))) == NULL || 
-        (!isTokenClass(TC_FUNCTION, entry->tt) && 
-        !(entry->tt == TT_PROCEDURE))) {
+    // (*). Extract IdEntry, verify exists.
+    if ((entry = containsIdEntry(id, TC_ROUTINE, SYMTAB_SCOPE_ALL)) == NULL) {
+        fprintf(stderr, "Error: verifyRoutineArgs: Null entry!\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // (1). Verify length matches.
+    if (entry->data.argc != exprList.length) {
+        printError("\"%s\" requires %d arguments, not %d!", 
+        identifierAtIndex(id), entry->data.argc, exprList.length);
         return;
     }
 
-    // (1). Verify expression list count matches argument count. 
-    if (exprList.length != entry->argc) {
-        printError("\"%s\" requires %d arguments, not %d!", identifierAtIndex(id), entry->argc, exprList.length);
-        return;
-    }
-
-    // (2). Verify expression token-types match argument token-types.
-    for (int i = 0; i < entry->argc; i++) {
-        IdEntry *arg = (IdEntry *)entry->argv[i];
+    // (2). Verify token-classes matches.
+    for (int i = 0; i < entry->data.argc; i++) {
+        IdEntry *arg = (IdEntry *)entry->data.argv[i];
         exprType expr = exprList.list[i];
 
-        if (arg->tt == expr.tt) {
-            continue;
+        if (expr.tt > arg->tt) {
+            printWarning("Argument %d of routine \"%s\" will be truncated!\n",
+                i, identifierAtIndex(id));
         }
-
-        if (!isPrimitiveOperand(expr.tt)) {
-            printError("Parameter %d of routine \"%s\" expected \"%s\" but got \"%s\" instead!",
-            i + 1, identifierAtIndex(id), tokenTypeName(arg->tt), tokenTypeName(exprList.list[i].tt));
-            continue;
-        }
-
-        printWarning("Parameter %d of routine \"%s\" will be %s!", 
-        i + 1, identifierAtIndex(id), (expr.tt == TT_INTEGER) ? "promoted" : "truncated");
     }
 
     // (*). Free expression list.
     freeExprList(exprList);
-}
-
-/*
-********************************************************************************
-*                             Procedure Prototypes                             *
-********************************************************************************
-*/
-
-/* Installs a procedure IdEntry into the symbol table.
-* 1. If procedure identifier in use, an error is thrown.
-*/
-void installProcedure (unsigned id) {
-    IdEntry *entry;
-
-    // (1). Verify procedure identifier is unused. Else throw error.
-    if ((entry = tableContains(identifierAtIndex(id))) != NULL) {
-        printError("\"%s\" is already defined as \"%s\"!", identifierAtIndex(id), 
-        tokenTypeName(entry->tt));
-        return;
-    }
-
-    // (*). Install procedure in symbol table with TT_PROCEDURE token-type.
-    entry = installEntry(newIDEntry(id, TT_PROCEDURE));
-}
-
-/* Installs variables in varList as arguments of procedure 'id'.
- * 1. Verifies variables in varlist have primitive token-types.
- * 2. Verifies variables in varlist have unique names.
- * Frees varList when finished. Scope must be incremented prior
- * to using this function.
-*/
-void installProcedureArgs (unsigned id, varListType varList) {
-    IdEntry *entry, **argv;
-
-    // (*). Obtain entry.
-    if ((entry = tableContains(identifierAtIndex(id))) == NULL) {
-        fprintf(stderr, "Error: installProcedureArgs: \"%s\" must be installed in symtab!\n", identifierAtIndex(id));
-        exit(EXIT_FAILURE);
-    }
-
-    // (1). Verify argument list contains valid token-types.
-    for (int i = 0; i < varList.length; i++) {
-        printf("Checking no.%d (varType) {.id = %u, .tt = %s}\n", i, varList.list[i].id, tokenTypeName(varList.list[i].tt));
-        if (!isPrimitiveOperand(varList.list[i].tt)) {
-            printError("Parameter \"%s\" in procedure \"%s\" has illegal type \"%s\"!", 
-            identifierAtIndex(varList.list[i].id),
-            identifierAtIndex(id),
-            tokenTypeName(varList.list[i].tt));
-            return;
-        }
-    }
-
-    // (*). Allocate pointer array for arguments.
-    if ((argv = malloc(varList.length * sizeof(IdEntry *))) == NULL) {
-        fprintf(stderr, "Error: installProcedureArgs: Couldn't allocate argv!\n");
-        exit(EXIT_FAILURE);
-    }
-
-    // (3). Install arguments (should be no existing entries).
-    for (int i = 0; i < varList.length; i++) {
-        varType v = varList.list[i];
-
-        // If entry exists, then duplicate argument name.
-        if (tableScopeContains(identifierAtIndex(v.id)) != NULL) {
-            printError("Duplicate parameter names in procedure \"%s\"!", identifierAtIndex(id));
-            return;
-        }
-        argv[i] = installEntry(newIDEntry(v.id, v.tt));
-    }
-
-    // (*). Assign argument vector and length to function entry.
-    entry->argc = varList.length;
-    entry->argv = (void **)argv;
-
-    // (5). Free variable list.
-    freeVarList(varList);
-}
-
-/*
-********************************************************************************
-*                           Declaration Functions                              *
-********************************************************************************
-*/
-
-/* Installs all given variables into the symbol table, then frees the list */
-void installVarList (varListType varList) {
-    IdEntry *entry;
-    varType v;
-
-    for (int i = 0; i < varList.length; i++) {
-        v = varList.list[i];
-
-        // Warn if redefining something in the local scope.
-        if ((entry = tableScopeContains(identifierAtIndex(v.id))) != NULL) {
-            printWarning("Redefinition of \"%s\" \"%s\" in current scope!",
-            tokenTypeName(entry->tt), identifierAtIndex(entry->id));
-            entry->tt = v.tt;
-        } else {
-            installEntry(newIDEntry(v.id, v.tt));
-        }
-    }
-
-    // Free varList.
-    freeVarList(varList);
 }

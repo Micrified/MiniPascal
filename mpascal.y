@@ -115,6 +115,7 @@ int yyerror(char *s) {
 // Bison YYSTYPE Declarations.
 %union {
   unsigned      num;
+  descType      desc;
   exprType      expr;
   exprListType  exprList;
   varType       var;
@@ -122,7 +123,8 @@ int yyerror(char *s) {
 }
 
 // Nonterminal return type rules.
-%type <num> type standardType identifier statementList optionalStatements
+%type <num> standardType identifier statementList optionalStatements
+%type <desc> type
 %type <expr> factor term simpleExpression expression 
 %type <exprList> expressionList
 %type <var> variable
@@ -141,39 +143,48 @@ int yyerror(char *s) {
 program : MP_PROGRAM MP_ID MP_POPEN identifierList MP_PCLOSE MP_SCOLON declarations { installVarList($7); } subprogramDeclarations compoundStatement MP_FSTOP MP_EOF { printf("ACCEPTED\n"); exit(0); }
         ;
 
-identifierList  : identifier                                         { $$ = insertVarType(initVarType(TT_UNDEFINED, $1), initVarListType()); }
-                | identifierList MP_COMMA identifier                 { $$ = insertVarType(initVarType(TT_UNDEFINED, $3), $1); }
+identifierList  : identifier                                         { $$ = insertVarType(initVarType(UNDEFINED, UNDEFINED, $1), initVarListType()); }
+                | identifierList MP_COMMA identifier                 { $$ = insertVarType(initVarType(UNDEFINED, UNDEFINED, $3), $1); }
                 ;
 
-declarations  : declarations MP_VAR identifierList MP_COLON type MP_SCOLON  { $$ = appendVarList(mapTokenTypeToVarList($5, $3), $1); }
+declarations  : declarations MP_VAR identifierList MP_COLON type MP_SCOLON  { $$ = appendVarList(mapDescToVarList($5, $3), $1); }
               |                                                             { $$ = initVarListType(); }
               ;
 
-type  : standardType                                                          { $$ = $1; }
-      | MP_ARRAY MP_BOPEN MP_INTEGER MP_ELLIPSES MP_INTEGER MP_BCLOSE MP_OF standardType  { if ($8 == TT_INTEGER) {return TT_ARRAY_INTEGER;} else {return TT_ARRAY_REAL;} }
+type  : standardType                                                                      { $$ = (descType){.tc = TC_SCALAR, .tt = $1}; }
+      | MP_ARRAY MP_BOPEN MP_INTEGER MP_ELLIPSES MP_INTEGER MP_BCLOSE MP_OF standardType  { $$ = (descType){.tc = TC_VECTOR, .tt = $8}; }
       ;
 
-standardType  : MP_TYPE_INTEGER                                               { $$ = TT_INTEGER; }
-              | MP_TYPE_REAL                                                  { $$ = TT_REAL; }
+standardType  : MP_TYPE_INTEGER                                                           { $$ = TT_INTEGER; }
+              | MP_TYPE_REAL                                                              { $$ = TT_REAL; }
               ;
 
 subprogramDeclarations  : subprogramDeclarations subprogramDeclaration MP_SCOLON
                         |
                         ;
 
-subprogramDeclaration : subprogramHead declarations compoundStatement { installVarList($2); decrementScopeLevel(); }
+subprogramDeclaration : subprogramHead declarations { installVarList($2); } compoundStatement { decrementTableScope(); }
                       ;
 
-subprogramHead  : MP_FUNCTION identifier arguments MP_COLON standardType MP_SCOLON  { installFunction($2, $5); incrementScopeLevel();  installFunctionArgs($2, $3); }
-                | MP_PROCEDURE identifier arguments MP_SCOLON                       { installProcedure($2); incrementScopeLevel(); installProcedureArgs($2, $3); }                      
+subprogramHead  : MP_FUNCTION identifier arguments MP_COLON standardType MP_SCOLON  { if (installRoutine($2, $5)) {
+                                                                                        incrementTableScope();
+                                                                                        installRoutineArgs($2, $3);
+                                                                                      }
+                                                                                      freeVarList($3);
+                                                                                    }
+                | MP_PROCEDURE identifier arguments MP_SCOLON                       { if (installRoutine($2, UNDEFINED)) {
+                                                                                        incrementTableScope();
+                                                                                        installRoutineArgs($2, $3);
+                                                                                      }   
+                                                                                    }                      
                 ;
 
 arguments : MP_POPEN parameterList MP_PCLOSE                      { $$ = $2; }
           |                                                       { $$ = initVarListType(); }
           ;
 
-parameterList : identifierList MP_COLON type                      { $$ = mapTokenTypeToVarList($3, $1); }                     
-              | parameterList MP_SCOLON identifierList MP_COLON type { $$ = appendVarList(mapTokenTypeToVarList($5, $3), $1); }
+parameterList : identifierList MP_COLON type                          { $$ = mapDescToVarList($3, $1); }                     
+              | parameterList MP_SCOLON identifierList MP_COLON type  { $$ = appendVarList(mapDescToVarList($5, $3), $1); }
               ;
 
 compoundStatement : MP_BEGIN optionalStatements MP_END            { if ($2 == 0) printWarning("Empty compound statement!"); }            
@@ -187,18 +198,33 @@ statementList : statement                                         { $$ = 1; }
               | statementList MP_SCOLON statement                 { $$ = $1 + 1; } 
               ;
 
-statement : variable MP_ASSIGNOP expression                       { resolveAssignment($1, $3); }                 
+statement : variable MP_ASSIGNOP expression                       { verifyAssignment($1, $3); }                 
           | procedureStatement
           | compoundStatement
           | MP_IF expression MP_THEN statement MP_ELSE statement  { verifyGuardExpr($2); }
           | MP_WHILE expression MP_DO statement                   { verifyGuardExpr($2); }             
           ;
 
-variable  : identifier                                            { $$ = initVarType(getTypeElseError(identifierAtIndex($1)), $1); }                                                                                      
-          | identifier MP_BOPEN expression MP_BCLOSE              { requireExprType(TT_INTEGER, $3); $$ = initVarType(resolveTypeClass(identifierAtIndex($1), TC_ARRAY), $1); }                  
+variable  : identifier                                            { if (existsId($1, TC_SCALAR)) {
+                                                                      printSymbolTables();
+                                                                      $$ = initVarTypeFromId($1, TC_SCALAR); 
+                                                                    } else {
+                                                                      $$ = initVarType(UNDEFINED, UNDEFINED, $1);
+                                                                    }
+                                                                  }                                                                                     
+          | identifier MP_BOPEN expression MP_BCLOSE              { if (existsId($1, TC_VECTOR)) {
+                                                                      printSymbolTables();
+                                                                      requireExprType(TT_INTEGER, $3); 
+                                                                      $$ = initVarTypeFromId($1, TC_VECTOR); 
+                                                                    }
+                                                                  }                  
 
 procedureStatement  : identifier                                 
-                    | identifier MP_POPEN expressionList MP_PCLOSE { resolveTypeClass(identifierAtIndex($1), TC_PROCEDURE); verifyRoutineArgs($1, $3);}
+                    | identifier MP_POPEN expressionList MP_PCLOSE { if (existsId($1, TC_ROUTINE)) { 
+                                                                        verifyRoutineArgs($1, $3); 
+                                                                      }
+                                                                      freeExprList($3);
+                                                                    }
                     ;
 
 expressionList  : expression                                      { $$ = insertExprList($1, initExprListType()); }                                                              
@@ -225,11 +251,26 @@ term  : factor                                                    { $$ = $1; }
       | term MP_MODOP factor                                      { $$ = resolveArithmeticOperation(MP_MODOP, $1, $3); }
       ;
 
-factor  : identifier                                              { $$ = initExprType(getTypeElseInstall(identifierAtIndex($1), TT_UNDEFINED), NIL); }
-        | identifier MP_POPEN expressionList MP_PCLOSE            { $$ = initExprType(resolveTypeClass(identifierAtIndex($1), TC_FUNCTION), NIL); verifyRoutineArgs($1, $3); }
-        | identifier MP_BOPEN expression MP_BCLOSE                { requireId($1, TC_VECTOR); requireExprType(TT_INTEGER, $3); $$ = initExprType(getIdTokenType($1, TC_VECTOR))
-                                                                    
-                                                                    $$ = initExprType(resolveTypeClass(identifierAtIndex($1), TC_ARRAY), NIL); 
+factor  : identifier                                              { if (existsId($1, TC_SCALAR) && isInitialized($1, TC_SCALAR)) {
+                                                                      $$ = initExprType(getIdTokenType($1, TC_SCALAR), NIL);
+                                                                    } else { 
+                                                                      $$ = initExprType(UNDEFINED, NIL); 
+                                                                    }
+                                                                  }
+        | identifier MP_POPEN expressionList MP_PCLOSE            { if (existsId($1, TC_ROUTINE)) { 
+                                                                      verifyRoutineArgs($1, $3); 
+                                                                      $$ = initExprType(getIdTokenType($1, TC_ROUTINE), NIL); 
+                                                                    } else {
+                                                                      $$ = initExprType(UNDEFINED, NIL);
+                                                                    }
+                                                                    freeExprList($3);
+                                                                  }
+        | identifier MP_BOPEN expression MP_BCLOSE                { if (existsId($1, TC_VECTOR)) {
+                                                                      requireExprType(TT_INTEGER, $3);
+                                                                      $$ = initExprType(getIdTokenType($1, TC_VECTOR), NIL);
+                                                                    } else {
+                                                                      $$ = initExprType(UNDEFINED, NIL);
+                                                                    }
                                                                   } 
         | MP_INTEGER                                              { $$ = initExprType(TT_INTEGER, installNumber(atof(yytext))); }
         | MP_REAL                                                 { $$ = initExprType(TT_REAL, installNumber(atof(yytext))); }
@@ -283,7 +324,7 @@ int main(int argc, char *argv[]) {
   // Free allocate memory.
   freeNumberTable();
   freeStringTable();
-  freeSymbolTableEntries();
+  freeSymbolTables();
   
   return EXIT_SUCCESS;
 }

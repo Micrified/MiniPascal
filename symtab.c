@@ -42,9 +42,10 @@ static IdEntry *allocateIdEntry (void) {
 
 /* Frees a IdData instance */
 static void freeIdData (IdData *data) {
-    if (data->argv != NULL) {
-        free(data->argv);
+    for (int i = 0; i < data->argc; i++) {
+        free(data->argv[i]);
     }
+    free(data->argv);
 }
 
 /* Frees an IdEntry instance */
@@ -168,6 +169,18 @@ static void freeSymbolTableLevel (unsigned level) {
 *                            Table IdEntry Routines                            *
 ********************************************************************************
 */
+
+/* Copies an IdEntry and returns a pointer. Exits on error. */
+IdEntry *copyIdEntry (IdEntry *entry) {
+    IdEntry *copy = allocateIdEntry(); 
+    copy->id = entry->id;
+    copy->tc = entry->tc;
+    copy->tt = entry->tt;
+    copy->rf = entry->rf;
+    copy->data = entry->data;
+    return copy;
+}
+
 
 /* Returns pointer to IdEntry if it exists in the symbol table. Else returns
  * NULL. Entries may have the same identifiers so long as their class is unique.

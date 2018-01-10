@@ -4,7 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "mptypes.h"
 #include "strtab.h"
+#include "debug.h"
 
 /*
     ***************************************************************************
@@ -44,6 +46,9 @@ typedef struct {
 ********************************************************************************
 */
 
+/* Copies an IdEntry and returns a pointer. Exits on error. */
+IdEntry *copyIdEntry (IdEntry *entry);
+
 /* Returns pointer to IdEntry if it exists in the symbol table. Else returns
  * NULL. Entries may have the same identifiers so long as their class is unique.
  * 
@@ -51,7 +56,7 @@ typedef struct {
  *  at literal value of integer is searched. Otherwise all descending table
  *  levels are traversed.
 */ 
-IdEntry *containsIdEntry (unsigned id, unsigned tc, unsigned scope);
+IdEntry *containsIdEntry (unsigned id, unsigned tc, int scope);
 
 
 /* Allocates and installs new IdEntry into the symbol table at current scope.
