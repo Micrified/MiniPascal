@@ -1,5 +1,5 @@
-#if !defined(MPTYPES_H)
-#define MPTYPES_H
+#if !defined(MP_TYPES_H)
+#define MP_TYPES_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,37 +14,33 @@
 
 /*
 ********************************************************************************
-*                        Symbolic Constants: ExprType                          *
+*                               Symbolic Constants                             *
 ********************************************************************************
 */
 
-// Token-Types: Primitives.
-#define TT_UNDEFINED            0
-#define TT_INTEGER              1
-#define TT_REAL                 2
+// Type: Undefined.
+#define UNDEFINED    0
 
-// Token-Class: Array Mask.
-#define TC_ARRAY                4
+// Token-Type: Primitives.
+#define TT_INTEGER      1
+#define TT_REAL         2
 
-// Token-Types: Arrays.
-#define TT_ARRAY_INTEGER        4
-#define TT_ARRAY_REAL           5
-
-// Token-Class: Function Mask.
-#define TC_FUNCTION             8
-
-// Token-Types: Functions.
-#define TT_FUNCTION_INTEGER     8
-#define TT_FUNCTION_REAL        9
+// Token-Type: Classes.
+#define TC_SCALAR       3
+#define TC_VECTOR       4
+#define TC_ROUTINE      5
 
 /*
 ********************************************************************************
-*                              Bison Dependencies                              *
+*                               Bison Dependencies                             *
 ********************************************************************************
 */
 
-// YYSType: Identifier data type.
-typedef unsigned idType;         // Index of identifier in string table.
+// YYSTYPE: Descriptor data type.
+typedef struct {
+    unsigned tc;            // Token-Class.
+    unsigned tt;            // Token-Type.
+} descType;
 
 // YYSTYPE: Expression data type.
 typedef struct {
@@ -60,14 +56,20 @@ typedef struct {
 
 // YYSTYPE: Variable data type.
 typedef struct {
+    unsigned tc;            // Token-Class.
     unsigned tt;            // Token-Type.
     unsigned id;            // Identifier-Index: Index of the identifier in strtab.
 } varType;
 
+// YYSTYPE: Variable-List data type.
+typedef struct {
+    unsigned length;        // Length of list.
+    varType *list;          // Allocated list.
+} varListType;
 
 /*
 ********************************************************************************
-*                           Function Prototypes: Utility                       *
+*                              Conversion Prototypes                           *
 ********************************************************************************
 */
 
@@ -79,16 +81,18 @@ const char *tokenClassName (unsigned tc);
 
 /*
 ********************************************************************************
-*                           Function Prototypes: exprType                      *
+*                              Expression Prototypes                           *
 ********************************************************************************
 */
 
-/* Initializes a new exprType with given token-type (tt) and value-index (vi) */
+/* Initializes a new exprType with given token-type (tt),
+ * and value-index (vi).
+*/
 exprType initExprType (unsigned tt, unsigned vi);
 
 /*
 ********************************************************************************
-*                        Function Prototypes: exprListType                     *
+*                            Expression-List Prototypes                        *
 ********************************************************************************
 */
 
@@ -96,19 +100,38 @@ exprType initExprType (unsigned tt, unsigned vi);
 exprListType initExprListType (void);
 
 /* Frees allocated memory in an exprListType */
-void freeExprList(exprListType exprList);
+void freeExprList (exprListType exprList);
 
 /* Allocates a copy of the given exprType and places it in returned exprList list. */
 exprListType insertExprList (exprType expr, exprListType exprList);
 
 /*
 ********************************************************************************
-*                        Function Prototypes: varType                          *
+*                               Variable Prototypes                            *
 ********************************************************************************
 */
 
-/* Initializes a new varType with the given token-type (tt) and identifier-index (id) */
-varType initVarType (unsigned tt, unsigned id);
+/* Initializes a new varType with the given token-class (tc), token-type (tt) and 
+ *identifier-index (id).
+*/
+varType initVarType (unsigned tc, unsigned tt, unsigned id);
 
+/*
+********************************************************************************
+*                            Variable-List Prototypes                          *
+********************************************************************************
+*/
+
+/* Initializes a new varListType */
+varListType initVarListType (void);
+
+/* Frees allocated memory in a varListType */
+void freeVarList(varListType varList);
+
+/* Allocates a copy of the given varType and places it in returned varList list. */
+varListType insertVarType (varType var, varListType varList);
+
+/* Appends the first varListType list to second varListType */
+varListType appendVarList (varListType suffix, varListType prefix);
 
 #endif

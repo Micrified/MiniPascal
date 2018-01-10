@@ -2,11 +2,15 @@ PROGRAM test (result);
 
 VAR x : INTEGER;
 VAR y : REAL;
+VAR x : REAL;
+
+
+FUNCTION square (x, z : INTEGER; y : REAL) : INTEGER;
+BEGIN
+    square := x * y;
+    square := square(x, y)
+END;
 
 BEGIN
-    IF 3.3 THEN z := 3 ELSE z := 4;
-    x := y + o;
-    x := (((1 > (3 <= 2)) < man[9.9]) >= (1 <> 3.3)) = o;
-    x := y[3.3];
-    lastLine := 0
+    z := square(1, 1.1, 2.2)
 END.

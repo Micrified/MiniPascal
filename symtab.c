@@ -2,58 +2,77 @@
 
 /*
 ********************************************************************************
-*                           Internal Data Structures                           *
+*                  Internal Data Structures & Symbolic Constants               *
 ********************************************************************************
 */
 
+// Elementary linked-list structure.
 typedef struct node {
-    IdEntry entry;
+    IdEntry *entry;
     struct node *next;
 } Node;
 
-/*
-********************************************************************************
-*                      Symbolic Constants & Global Variables                   *
-********************************************************************************
-*/
+// Prime symbol-table size.
+#define SYMTAB_SIZE     6959
 
-#define SYMTAB_SIZE         6959
-#define SYMTAB_LEVELS       2
+// Symbol-table levels.
+#define SYMTAB_LVLS     2
 
 // Symbol table.
-Node *symTable[SYMTAB_SIZE][SYMTAB_LEVELS];
+Node *symTable[SYMTAB_SIZE][SYMTAB_LVLS];
 
-// Current scope level of the table.
-unsigned level;
-
-/*
-********************************************************************************
-*                               IdEntry Routines                               *
-********************************************************************************
-*/
-
-/* Returns nonzero if a is the same entry as b */
-int equalsID (IdEntry a, IdEntry b) {
-    return (strcmp(identifierAtIndex(a.id), identifierAtIndex(b.id)) == 0 &&
-            a.tt == b.tt);
-}
-
-/* Convenient initializer for IdEntry. */
-IdEntry newIDEntry (unsigned id, unsigned tt) {
-    return (IdEntry){.id = id, .tt = tt};
-}
+// Table scope level.
+unsigned lvl;
 
 /*
 ********************************************************************************
-*                           Private Linked List Routines                       *
+*                           Internal IdEntry Routines                          *
 ********************************************************************************
 */
 
-/* Safely allocates a new node */
-static Node *newNode (IdEntry entry, Node *next) {
+/* Safely allocates an IdEntry instance and returns its pointer. */
+static IdEntry *allocateIdEntry (void) {
+    IdEntry *entry;
+    if ((entry = malloc(sizeof(IdEntry))) == NULL) {
+        fprintf(stderr, "Error: allocateIdEntry: Allocation failure!\n");
+        exit(EXIT_FAILURE);
+    }
+    return entry;
+}
+
+/* Frees a IdData instance */
+static void freeIdData (IdData *data) {
+    for (int i = 0; i < data->argc; i++) {
+        free(data->argv[i]);
+    }
+    free(data->argv);
+}
+
+/* Frees an IdEntry instance */
+static void freeIdEntry (IdEntry *entry) {
+
+    if (entry == NULL) {
+        return;
+    }
+
+    if (entry->tc == TC_ROUTINE) {
+        freeIdData(&(entry->data));
+    }
+
+    free(entry);
+}
+
+/*
+********************************************************************************
+*                          Internal Linked List Routines                       *
+********************************************************************************
+*/
+
+/* Allocates new list-node and returns its pointer. Returns NULL on error. */
+static Node *newNode (IdEntry *entry, Node *next) {
     Node *n = NULL;
     if ((n = malloc(sizeof(Node))) == NULL) {
-        fprintf(stderr, "Error: symtab: Couldn't init a new Node!\n");
+        fprintf(stderr, "Error: newNode: Couldn't initialize new list node!\n");
         exit(EXIT_FAILURE);
     }
     n->entry = entry;
@@ -61,44 +80,47 @@ static Node *newNode (IdEntry entry, Node *next) {
     return n;
 }
 
-/* Allocates a new node and inserts it in front of the list */
-static Node *insertNode (IdEntry entry, Node *lp) {
+/* Allocates a new node and inserts it in front of given node list. */
+static Node *insertNode (IdEntry *entry, Node *lp) {
     return newNode(entry, lp);
 }
 
-/* Free's a linked list of nodes */
-static void freeNode (Node *lp) {
+/* Frees linked-list of nodes. */
+static void freeNodes (Node *lp) {
     if (lp == NULL) {
         return;
     }
-    freeNode(lp->next);
+    freeNodes(lp->next);
+    freeIdEntry(lp->entry);
     free(lp);
 }
 
-/* Returns pointer to node if the IdEntry exists in the list. Else NULL */
-static Node *listContains (const char *identifier, Node *lp) {
+/* Returns pointer to node containing IdEntry identified by identifier and class.
+ * If the list does not contain an entry, a NULL pointer is returned.
+*/
+static Node *listContains (unsigned id, unsigned tc, Node *lp) {
     if (lp == NULL) {
-        return 0;
+        return NULL;
     }
-    if (strcmp(identifier, identifierAtIndex(lp->entry.id)) == 0) {
+    if (lp->entry->tc == tc && lp->entry->id == id) {
         return lp;
     }
-    return listContains(identifier, lp->next);
+    return listContains(id, tc, lp->next);
 }
 
-/* Debug Method: Prints a linked node list */
+/* Debug method: prints linked-list. */
 static void printList (Node *lp) {
     if (lp == NULL) {
-        printf("[Null]");
+        printf("[NULL]");
     } else {
-        printf("[%s]->", identifierAtIndex(lp->entry.id));
+        printf("[%s : %s : %s]->", identifierAtIndex(lp->entry->id), tokenClassName(lp->entry->tc), tokenTypeName(lp->entry->tt ));
         printList(lp->next);
     }
 }
 
 /*
 ********************************************************************************
-*                              Private Table Routines                          *
+*                         Internal Table Control Routines                      *
 ********************************************************************************
 */
 
@@ -119,81 +141,143 @@ static unsigned hash (const char *s) {
     return hash % SYMTAB_SIZE;
 }
 
+/* Sets the current table scope level. If invalid, an error is thrown. */
+static void setLevel (unsigned level) {
+    if (level >= SYMTAB_LVLS) {
+        printError("Maximum scope level exceeded!");
+        exit(EXIT_FAILURE);
+    }
+    lvl = level;
+}
+
+/* Frees all memory in a given scope level. */
+static void freeSymbolTableLevel (unsigned level) {
+    if (level >= SYMTAB_LVLS) {
+        fprintf(stderr, "Error: freeSymbolTableLevel: Specified scope out of bounds!\n");
+        exit(EXIT_FAILURE);
+    }
+
+    for (unsigned i = 0; i < SYMTAB_SIZE; i++) {
+        freeNodes(symTable[i][level]);
+        symTable[i][level] = NULL;
+    }
+}
+
 
 /*
 ********************************************************************************
-*                               Public Table Routines                          *
+*                            Table IdEntry Routines                            *
 ********************************************************************************
 */
 
-
-
-/* Sets the current table level/scope */
-void setLevel (unsigned lvl) {
-    if (lvl > SYMTAB_LEVELS) {
-        fprintf(stderr, "Error: Bad Level: (%d > %d)\n", lvl, SYMTAB_LEVELS);
-        exit(EXIT_FAILURE);
-    }
-    level = lvl;
+/* Copies an IdEntry and returns a pointer. Exits on error. */
+IdEntry *copyIdEntry (IdEntry *entry) {
+    IdEntry *copy = allocateIdEntry(); 
+    copy->id = entry->id;
+    copy->tc = entry->tc;
+    copy->tt = entry->tt;
+    copy->rf = entry->rf;
+    copy->data = entry->data;
+    return copy;
 }
 
 
-/* Returns pointer to IdEntry if in table. Else NULL */
-IdEntry *tableContains (const char *identifier) {
-
-    // Verify identifier is non-NULL.
-    if (identifier == NULL) {
-        fprintf(stderr, "Error: tableContains: NULL identifier!\n");
-        exit(EXIT_FAILURE);
-    }
-
-    unsigned k = hash(identifier);
-    Node *lp = listContains(identifier, symTable[k][level]);
-
-    return (lp == NULL) ? NULL : &(lp->entry);
-}
-
-/* Inserts a new IdEntry into the table. Returns pointer to entry. */
-IdEntry *installEntry (IdEntry entry) {
-    const char *identifier = identifierAtIndex(entry.id);
-    unsigned k = hash(identifier);
+/* Returns pointer to IdEntry if it exists in the symbol table. Else returns
+ * NULL. Entries may have the same identifiers so long as their class is unique.
+ * 
+ * Parameter `scope` defines the search scope. If a positive integer, scope
+ *  at literal value of integer is searched. Otherwise all descending table
+ *  levels are traversed.
+*/ 
+IdEntry *containsIdEntry (unsigned id, unsigned tc, int scope) {
+    unsigned h = hash(identifierAtIndex(id));
     Node *lp = NULL;
 
-    // If the entry exists, then produce an error (should have looked up).
-    if ((lp = listContains(identifier, symTable[k][level])) != NULL) {
-        fprintf(stderr, "Error: Try to avoid installing something twice!\n");
+    if (scope == SYMTAB_SCOPE_ALL) {
+        for (int l = lvl; l >= 0; l--) {
+            if ((lp = listContains(id, tc, symTable[h][l])) != NULL) {
+                return lp->entry;
+            }
+        }
+        return NULL;
+    } 
+
+    if (scope < SYMTAB_SCOPE_ALL || scope >= SYMTAB_LVLS) {
+        fprintf(stderr, "Error: containsIdEntry: Scope out of bounds!\n");
         exit(EXIT_FAILURE);
     }
 
-    // Insert new entry at list head, return pointer to entry.
-    symTable[k][level] = insertNode(entry, symTable[k][level]);
-    return &(symTable[k][level]->entry);
+    if ((lp = listContains(id, tc, symTable[h][scope])) != NULL) {
+        return lp->entry;
+    }
+
+    return NULL;
 }
 
-/* Frees all allocated entries in the given level */
-void freeTableLevelEntries (int lvl) {
-    for (int i = 0; i < SYMTAB_SIZE; i++) {
-        freeNode(symTable[i][lvl]);
-        symTable[i][lvl] = NULL;
+
+/* Allocates and installs new IdEntry into the symbol table at current scope.
+ * Returns pointer if successful. Duplicate entry must not already exist. 
+*/
+IdEntry *installIdEntry (unsigned id, unsigned tc, unsigned tt) {
+    IdEntry *entry = allocateIdEntry();
+    unsigned h = hash(identifierAtIndex(id));
+    Node *lp = NULL;
+
+    // Verify entry does not exist yet.
+    if ((lp = listContains(id, tc, symTable[h][lvl])) != NULL) {
+        fprintf(stderr, "Error: installIdEntry: Entry already exists in table!\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Assign entry fields.
+    entry->id = id;
+    entry->tc = tc;
+    entry->tt = tt;
+    entry->rf = 0;
+    entry->data = (IdData){.argc = 0, .argv = NULL};
+
+    // Insert new entry at list head. Then return pointer to entry.
+    symTable[h][lvl] = insertNode(entry, lp);
+    return symTable[h][lvl]->entry;
+}
+
+/*
+********************************************************************************
+*                           Table Control Routines                             * 
+********************************************************************************
+*/
+
+/* Increments table scope level */
+void incrementTableScope (void) {
+    setLevel(lvl + 1);
+}
+
+/* Decrements table scope level: Frees memory in current scope */
+void decrementTableScope (void) {
+    freeSymbolTableLevel(lvl);
+    setLevel(lvl - 1);
+}
+
+/* Returns the table scope level */
+unsigned currentTableScope (void) {
+    return lvl;
+}
+
+/* Frees all allocated entires in all table levels */
+void freeSymbolTables (void) {
+    for (int i = lvl; i >= 0; i--) {
+        freeSymbolTableLevel(i);
     }
 }
 
-/* Frees all allocated entries */
-void freeSymbolTableEntries (void) {
-    for (int i = 0; i < SYMTAB_LEVELS; i++) {
-        freeTableLevelEntries(SYMTAB_LEVELS - i - 1);
-    }
-}
-
-/* Debug Method: Print state of the symbol tables */
+/* Prints all symbol table entires */
 void printSymbolTables (void) {
-    for (int i = 0; i < SYMTAB_LEVELS; i++) {
+    for (int i = 0; i < SYMTAB_LVLS; i++) {
         printf("****************************** LEVEL %u ******************************\n", i);
         for (int j = 0; j < SYMTAB_SIZE; j++) {
-            printf("%d.\t", j); printList(symTable[j][i]); putchar('\n');
+            if (symTable[j][i] != NULL) {
+                printf("%d.\t", j); printList(symTable[j][i]); putchar('\n');
+            }
         }
-     }
+    }
 }
-
-
-

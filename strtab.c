@@ -91,7 +91,7 @@ void printStringTable() {
     printf("Size = %u\nHead = %u\nTable = [", strTableSize, sp);
     for (int i = 0; i < sp; i++) {
         if (strTable[i] == '\0') {
-            putchar('|');
+            putchar(',');
         } else {
             putchar(strTable[i]);
         }
