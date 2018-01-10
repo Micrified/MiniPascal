@@ -301,8 +301,9 @@ term  : factor                                                    { $$ = $1; }
       | term MP_MODOP factor                                      { $$ = resolveArithmeticOperation(MP_MODOP, $1, $3); }
       ;
 
-factor  : identifier                                              { /* Verify scalar factor exists, and has been initialized */
-                                                                    if (existsId($1, TC_SCALAR) && isInitialized($1, TC_SCALAR)) {
+factor  : identifier                                              { /* Verify scalar factor exists. Warn if uninitialized */
+                                                                    if (existsId($1, TC_SCALAR)) {
+                                                                      isInitialized($1, TC_SCALAR);
                                                                       $$ = initExprType(getIdTokenType($1, TC_SCALAR), NIL);
                                                                     } else { 
                                                                       $$ = initExprType(UNDEFINED, NIL); 

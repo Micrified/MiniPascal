@@ -18,7 +18,8 @@
 /* Returns zero and throws error if id of type-class tc isn't in symbol table. */
 unsigned existsId (unsigned id, unsigned tc);
 
-/* Returns nonzero if the given id of type-class tc has been initialized. */
+/* Returns nonzero if the given id of type-class tc has been initialized. 
+ * A warning is also displayed. */
 unsigned isInitialized (unsigned id, unsigned tc);
 
 /* Returns the token-type for an identifier. Must exist in symbol table. */

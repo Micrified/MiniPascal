@@ -50,11 +50,12 @@ unsigned existsId (unsigned id, unsigned tc) {
     return 1;
 }
 
-/* Returns nonzero and throws error if the given id of type-class tc has been initialized. */
+/* Returns nonzero if the given id of type-class tc has been initialized. 
+ * A warning is also displayed. */
 unsigned isInitialized (unsigned id, unsigned tc) {
     IdEntry *entry = containsIdEntry(id, tc, SYMTAB_SCOPE_ALL);
     if (entry->rf == 0) {
-        printError("\"%s\" of class \"%s\" exists but is uninitialized!", 
+        printWarning("\"%s\" of class \"%s\" exists but is uninitialized!", 
             identifierAtIndex(id),
             tokenClassName(tc));
     }
@@ -322,14 +323,14 @@ void verifyRoutineArgs(unsigned id, exprListType exprList) {
     }
 
     // (1). Verify length matches.
-    if (entry->data.argc != exprList.length) {
-        printError("\"%s\" requires %d arguments, not %d!", 
+    if (entry->data.argc < exprList.length) {
+        printError("\"%s\" requires at most %d arguments, not %d!", 
         identifierAtIndex(id), entry->data.argc, exprList.length);
         return;
     }
 
     // (2). Verify token-classes matches.
-    for (int i = 0; i < entry->data.argc; i++) {
+    for (int i = 0; i < exprList.length; i++) {
         IdEntry *arg = (IdEntry *)entry->data.argv[i];
         exprType expr = exprList.list[i];
 
