@@ -227,9 +227,8 @@ term  : factor                                                    { $$ = $1; }
 
 factor  : identifier                                              { $$ = initExprType(getTypeElseInstall(identifierAtIndex($1), TT_UNDEFINED), NIL); }
         | identifier MP_POPEN expressionList MP_PCLOSE            { $$ = initExprType(resolveTypeClass(identifierAtIndex($1), TC_FUNCTION), NIL); verifyRoutineArgs($1, $3); }
-        | identifier MP_BOPEN expression MP_BCLOSE                { /* Indexing array requires INTEGER expression */
-                                                                    requireExprType(TT_INTEGER, $3);
-                                                                    /* Return new expression type with primitive of array */
+        | identifier MP_BOPEN expression MP_BCLOSE                { requireId($1, TC_VECTOR); requireExprType(TT_INTEGER, $3); $$ = initExprType(getIdTokenType($1, TC_VECTOR))
+                                                                    
                                                                     $$ = initExprType(resolveTypeClass(identifierAtIndex($1), TC_ARRAY), NIL); 
                                                                   } 
         | MP_INTEGER                                              { $$ = initExprType(TT_INTEGER, installNumber(atof(yytext))); }

@@ -2,7 +2,7 @@
 
 /*
 ********************************************************************************
-*                              Functions: Utility                              *
+*                              Conversion Functions                            *
 ********************************************************************************
 */
 
@@ -12,10 +12,6 @@ const char *tokenTypeName (unsigned tt) {
         case TT_UNDEFINED:          return "Undefined";
         case TT_INTEGER:            return "Integer";
         case TT_REAL:               return "Real";
-        case TT_ARRAY_INTEGER:      return "Integer[]";
-        case TT_ARRAY_REAL:         return "Real[]";
-        case TT_FUNCTION_INTEGER:   return "Integer()";
-        case TT_FUNCTION_REAL:      return "Real()";
     }
     return "(Unknown Token-Type)";
 }
@@ -23,26 +19,26 @@ const char *tokenTypeName (unsigned tt) {
 /* Returns a string associated with the given token-class */
 const char *tokenClassName (unsigned tc) {
     switch (tc) {
-        case TC_ARRAY:              return "Array";
-        case TC_FUNCTION:           return "Function";
+        case TC_SCALAR:             return "Scalar";
+        case TC_VECTOR:             return "Vector";
+        case TC_ROUTINE:            return "Routine";
     }
     return "(Unknown Token-Class)";
 }
-
 /*
 ********************************************************************************
-*                               Functions: exprType                            *
+*                              Expression Functions                            *
 ********************************************************************************
 */
 
-/* Initializes a new exprType with given token-tyke (tt) and value-index (vi) */
+/* Initializes a new exprType with given token-type (tt) and value-index (vi) */
 exprType initExprType (unsigned tt, unsigned vi) {
     return (exprType){.tt = tt, .vi = vi};
 }
 
 /*
 ********************************************************************************
-*                             Functions: exprListType                          *
+*                            Expression-List Functions                         *
 ********************************************************************************
 */
 
@@ -58,7 +54,7 @@ void freeExprList(exprListType exprList) {
 
 /* Allocates a copy of the given exprType and places it in returned exprList list. */
 exprListType insertExprList (exprType expr, exprListType exprList) {
-
+    
     if ((exprList.list = realloc(exprList.list, (exprList.length + 1) * sizeof(exprType))) == NULL) {
         fprintf(stderr, "Error: insertExprList: List reallocation failed!\n");
         exit(EXIT_FAILURE);
@@ -71,18 +67,18 @@ exprListType insertExprList (exprType expr, exprListType exprList) {
 
 /*
 ********************************************************************************
-*                               Functions: varType                             *
+*                               Variable Functions                             *
 ********************************************************************************
 */
 
-/* Initializes a new varType with the given token-type (tt) and identifier-index (id) */
-varType initVarType (unsigned tt, unsigned id) {
-    return (varType){.tt = tt, .id = id};
+/* Initializes a new varType with the given token-class (tc) and identifier-index (id) */
+varType initVarType (unsigned tc, unsigned id) {
+    return (varType){.tc = tc, .id = id};
 }
 
 /*
 ********************************************************************************
-*                             Functions: varListType                           *
+*                            Variable-List Functions                           *
 ********************************************************************************
 */
 
@@ -98,7 +94,7 @@ void freeVarList(varListType varList) {
 
 /* Allocates a copy of the given varType and places it in returned varList list. */
 varListType insertVarType (varType var, varListType varList) {
-
+    
     if ((varList.list = realloc(varList.list, (varList.length + 1) * sizeof(varType))) == NULL) {
         fprintf(stderr, "Error: insertVarType: List reallocation failed!\n");
         exit(EXIT_FAILURE);
@@ -109,10 +105,11 @@ varListType insertVarType (varType var, varListType varList) {
     return varList;
 }
 
-/* Maps the given token-type to the list of varTypes in the varList list. */
-varListType mapTokenTypeToVarList (unsigned tt, varListType varList) {
+/* Maps the given token-class to the list of varTypes in the varList list. */
+varListType mapTokenTypeToVarList (unsigned tc, varListType varList) {
+
     for (int i = 0; i < varList.length; i++) {
-        varList.list[i].tt = tt;
+        varList.list[i].tc = tc;
     }
     return varList;
 }
@@ -137,5 +134,5 @@ varListType appendVarList (varListType suffix, varListType prefix) {
     // Free suffix list.
     free(suffix.list);
 
-    return prefix;
+    return prefix;   
 }

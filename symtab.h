@@ -14,65 +14,70 @@
     ***************************************************************************
 */
 
-
 /*
 ********************************************************************************
 *                 External Data Structures & Symbolic Constants                *
 ********************************************************************************
 */
 
-/* ID Entry: Stores information about identifer */
+// Indicates that a search for an IdEntry may traverse lower scope-levels.
+#define SYMTAB_SCOPE_ALL   -1
+
+/* Routine ID-Entry (Function, Procedure) */
+typedef struct {     
+    unsigned argc;  // Argument count.
+    void **argv;    // Vector of IdEntry table pointers.
+} IdData;
+
+/* IdEntry: Symbol Table Entry */
 typedef struct {
-    unsigned id;    // Identifier index in string table.
-    unsigned tt;    // Identifier token type.
-    unsigned argc;  // Argument Count (for routines).
-    void    **argv;  // Array of IdEntry pointers (for routines).
+    unsigned id;        // Identifier index in string table.
+    unsigned tc;        // Type-class: Routine / Vector / Scalar
+    unsigned tt;        // Token-type.
+    unsigned rf;        // Referenced boolean flag.
+    IdData data;        // Type data.
 } IdEntry;
 
 /*
 ********************************************************************************
-*                               IdEntry Routines                               *
+*                           Table IdEntry Prototypes                           *
 ********************************************************************************
 */
 
-/* Returns nonzero if a is the same entry as b */
-int equalsID (IdEntry a, IdEntry b);
+/* Returns pointer to IdEntry if it exists in the symbol table. Else returns
+ * NULL. Entries may have the same identifiers so long as their class is unique.
+ * 
+ * Parameter `scope` defines the search scope. If a positive integer, scope
+ *  at literal value of integer is searched. Otherwise all descending table
+ *  levels are traversed.
+*/ 
+IdEntry *containsIdEntry (unsigned id, unsigned tc, unsigned scope);
 
-/* Convenient initializer for standard IdEntry. */
-IdEntry newIDEntry (unsigned id, unsigned tt);
 
-/* Frees an IdEntry. */
-void freeIdEntry (IdEntry entry);
+/* Allocates and installs new IdEntry into the symbol table at current scope.
+ * Returns pointer if successful. Duplicate entry must not already exist. 
+*/
+IdEntry *installIdEntry (unsigned id, unsigned tc, unsigned tt);
 
 /*
 ********************************************************************************
-*                               Table Routines                                 *
+*                           Table Control Prototypes                           *
 ********************************************************************************
 */
 
-/* Increments the current table level or scope */
-void incrementScopeLevel (void);
+/* Increments table scope level */
+void incrementTableScope (void);
 
-/* Decrements the current table level or scope */
-void decrementScopeLevel (void);
+/* Decrements table scope level: Frees memory in current scope */
+void decrementTableScope (void);
 
-/* Returns pointer to IdEntry if in table. Else NULL */
-IdEntry *tableContains (const char *identifier);
+/* Returns the table scope level */
+unsigned currentTableScope (void);
 
-/* Returns pointer to IdEntry if in current table scope. Else NULL */
-IdEntry *tableScopeContains (const char *identifier);
+/* Frees all allocated entires in all table levels */
+void freeSymbolTables (void);
 
-/* Inserts a new IdEntry into the table. Returns pointer to entry. */
-IdEntry *installEntry (IdEntry entry);
-
-/* Frees all allocated entries in the given level */
-void freeTableLevelEntries (int lvl);
-
-/* Frees all allocated entries */
-void freeSymbolTableEntries (void); 
-
-/* Debug Method: Print state of the symbol tables */
+/* Prints all symbol table entires */
 void printSymbolTables (void);
-
 
 #endif
