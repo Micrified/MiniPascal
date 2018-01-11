@@ -18,7 +18,7 @@ Only Scalar and Vector class variables may be assigned to. Variables with the Ro
 Routines are defined as either Functions or Procedure. A Procedure is simply a function with no return value. MiniPascal
 treats Procedures as Functions with undefined return types. Function return values are scalar class variables which share the same name as the function. They are installed automatically.
 
-**Note:** Routines only accept **scalar arguments** in our current implementation.
+**Note:** Routines only accept **scalar** and **vector** arguments.
 
 You are not required to provide routines with all their arguments. However, you may not supply more than the routine signature specifies. 
 
@@ -50,6 +50,6 @@ You are not required to provide routines with all their arguments. However, you 
 
 ### Compound Statements
 1. A warning is displayed for empty compound statements.
-2. An error is displayed if function return variables are left uninitialized.
+2. An error is displayed if function return variables are left uninitialized. This is scope specific.
 
 ###

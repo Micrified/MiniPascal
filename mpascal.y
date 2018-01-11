@@ -257,7 +257,7 @@ variable  : identifier                                            { /* Expect sc
                                                                   }                                                                                     
           | identifier MP_BOPEN expression MP_BCLOSE              { /* Expect vector id entry in symbol-table. Else install as undefined */
                                                                     if (existsId($1, TC_VECTOR)) {
-                                                                      requireExprType(TT_INTEGER, $3); 
+                                                                      requireExprType(TC_SCALAR, TT_INTEGER, $3); 
                                                                       $$ = initVarType(TC_VECTOR, getIdTokenType($1, TC_VECTOR), $1);
                                                                     }
                                                                   }                  
@@ -302,32 +302,32 @@ term  : factor                                                    { $$ = $1; }
       ;
 
 factor  : identifier                                              { /* Verify scalar factor exists. Warn if uninitialized */
-                                                                    if (existsId($1, TC_SCALAR)) {
-                                                                      isInitialized($1, TC_SCALAR);
-                                                                      $$ = initExprType(getIdTokenType($1, TC_SCALAR), NIL);
+                                                                    if (existsId($1, TC_ANY)) {
+                                                                      isInitialized($1, TC_ANY);
+                                                                      $$ = initExprTypeFromId($1, TC_ANY);
                                                                     } else { 
-                                                                      $$ = initExprType(UNDEFINED, NIL); 
+                                                                      $$ = initExprType(UNDEFINED, UNDEFINED, NIL); 
                                                                     }
                                                                   }
         | identifier MP_POPEN expressionList MP_PCLOSE            { /* Verify routine factor exists, and has proper arguments */
                                                                     if (existsId($1, TC_ROUTINE)) { 
-                                                                      verifyRoutineArgs($1, $3); 
-                                                                      $$ = initExprType(getIdTokenType($1, TC_ROUTINE), NIL); 
+                                                                      verifyRoutineArgs($1, $3);
+                                                                      $$ = initExprType(TC_SCALAR, getIdTokenType($1, TC_ROUTINE), NIL); 
                                                                     } else {
-                                                                      $$ = initExprType(UNDEFINED, NIL);
+                                                                      $$ = initExprType(UNDEFINED, UNDEFINED, NIL);
                                                                     }
                                                                     freeExprList($3);
                                                                   }
         | identifier MP_BOPEN expression MP_BCLOSE                { /* Verify vector factor exists, and indexing expression is valid */
                                                                     if (existsId($1, TC_VECTOR)) {
-                                                                      requireExprType(TT_INTEGER, $3);
-                                                                      $$ = initExprType(getIdTokenType($1, TC_VECTOR), NIL);
+                                                                      requireExprType(TC_SCALAR, TT_INTEGER, $3);
+                                                                      $$ = initExprType(TC_SCALAR, getIdTokenType($1, TC_VECTOR), NIL);
                                                                     } else {
-                                                                      $$ = initExprType(UNDEFINED, NIL);
+                                                                      $$ = initExprType(UNDEFINED, UNDEFINED, NIL);
                                                                     }
                                                                   } 
-        | MP_INTEGER                                              { $$ = initExprType(TT_INTEGER, installNumber(atof(yytext))); }
-        | MP_REAL                                                 { $$ = initExprType(TT_REAL, installNumber(atof(yytext))); }
+        | MP_INTEGER                                              { $$ = initExprType(TC_SCALAR, TT_INTEGER, installNumber(atof(yytext))); }
+        | MP_REAL                                                 { $$ = initExprType(TC_SCALAR, TT_REAL, installNumber(atof(yytext))); }
         | MP_POPEN expression MP_PCLOSE                           { $$ = $2; }
         ;
 

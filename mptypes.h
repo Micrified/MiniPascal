@@ -44,6 +44,7 @@ typedef struct {
 
 // YYSTYPE: Expression data type.
 typedef struct {
+    unsigned    tc;         // Token-Class.
     unsigned    tt;         // Token-Type.
     int         vi;         // Value-Index: Index of constant value in numtab.
 } exprType;
@@ -85,10 +86,10 @@ const char *tokenClassName (unsigned tc);
 ********************************************************************************
 */
 
-/* Initializes a new exprType with given token-type (tt),
+/* Initializes a new exprType with given token-class (tc), token-type (tt),
  * and value-index (vi).
 */
-exprType initExprType (unsigned tt, unsigned vi);
+exprType initExprType (unsigned tc, unsigned tt, unsigned vi);
 
 /*
 ********************************************************************************

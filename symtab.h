@@ -23,7 +23,10 @@
 */
 
 // Indicates that a search for an IdEntry may traverse lower scope-levels.
-#define SYMTAB_SCOPE_ALL   -1
+#define SYMTAB_SCOPE_ALL    -1
+
+// Indicates that any IdEntry may be selected for a given id.
+#define TC_ANY              -1
 
 /* Routine ID-Entry (Function, Procedure) */
 typedef struct {     
@@ -49,15 +52,18 @@ typedef struct {
 /* Copies an IdEntry and returns a pointer. Exits on error. */
 IdEntry *copyIdEntry (IdEntry *entry);
 
-/* Returns pointer to IdEntry if it exists in the symbol table. Else returns
- * NULL. Entries may have the same identifiers so long as their class is unique.
- * 
- * Parameter `scope` defines the search scope. If a positive integer, scope
- *  at literal value of integer is searched. Otherwise all descending table
- *  levels are traversed.
-*/ 
+/* Returns pointer to IdEntry if in the symbol-table. Otherwise returns NULL.
+ * An IdEntry is uniquely identified by combination (id, tc).
+ * Parameters:
+ * - id: The identifier-index.
+ *
+ * - tc: The token-class. If not a positive integer, first matching IdEntry
+ *       with the given id is returned. Typically last installed IdEntry.
+ *
+ * - scope: The search scope. If not positive integer, all descending
+ *          scope levels are traversed. Otherwise literal value used.
+*/
 IdEntry *containsIdEntry (unsigned id, unsigned tc, int scope);
-
 
 /* Allocates and installs new IdEntry into the symbol table at current scope.
  * Returns pointer if successful. Duplicate entry must not already exist. 

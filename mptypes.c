@@ -32,11 +32,11 @@ const char *tokenClassName (unsigned tc) {
 ********************************************************************************
 */
 
-/* Initializes a new exprType with given token-type (tt),
+/* Initializes a new exprType with given token-class (tc), token-type (tt),
  * and value-index (vi).
 */
-exprType initExprType (unsigned tt, unsigned vi) {
-    return (exprType){.tt = tt, .vi = vi};
+exprType initExprType (unsigned tc, unsigned tt, unsigned vi) {
+    return (exprType){.tc = tc, .tt = tt, .vi = vi};
 }
 
 /*

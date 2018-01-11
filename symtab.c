@@ -102,7 +102,7 @@ static Node *listContains (unsigned id, unsigned tc, Node *lp) {
     if (lp == NULL) {
         return NULL;
     }
-    if (lp->entry->tc == tc && lp->entry->id == id) {
+    if ((lp->entry->tc == tc || tc == (unsigned)TC_ANY) && lp->entry->id == id) {
         return lp;
     }
     return listContains(id, tc, lp->next);
@@ -182,13 +182,17 @@ IdEntry *copyIdEntry (IdEntry *entry) {
 }
 
 
-/* Returns pointer to IdEntry if it exists in the symbol table. Else returns
- * NULL. Entries may have the same identifiers so long as their class is unique.
- * 
- * Parameter `scope` defines the search scope. If a positive integer, scope
- *  at literal value of integer is searched. Otherwise all descending table
- *  levels are traversed.
-*/ 
+/* Returns pointer to IdEntry if in the symbol-table. Otherwise returns NULL.
+ * An IdEntry is uniquely identified by combination (id, tc).
+ * Parameters:
+ * - id: The identifier-index.
+ *
+ * - tc: The token-class. If not a positive integer, first matching IdEntry
+ *       with the given id is returned. Typically last installed IdEntry.
+ *
+ * - scope: The search scope. If not positive integer, all descending
+ *          scope levels are traversed. Otherwise literal value used.
+*/
 IdEntry *containsIdEntry (unsigned id, unsigned tc, int scope) {
     unsigned h = hash(identifierAtIndex(id));
     Node *lp = NULL;
