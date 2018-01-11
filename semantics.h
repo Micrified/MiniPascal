@@ -18,9 +18,11 @@
 /* Returns zero and throws error if id of type-class tc isn't in symbol table. */
 unsigned existsId (unsigned id, unsigned tc);
 
-/* Returns nonzero if the given id of type-class tc has been initialized. 
- * A warning is also displayed. */
-unsigned isInitialized (unsigned id, unsigned tc);
+/* Displays warning if id of type-class tc is not initialized.
+  * Only checks current table scope. If id doesn't exist in scope, no warning
+  * is displayed.
+*/ 
+void isInitialized (unsigned id, unsigned tc);
 
 /* Returns the token-type for an identifier. Must exist in symbol table. */
 unsigned getIdTokenType (unsigned id, unsigned tc);
@@ -31,8 +33,13 @@ unsigned getIdTokenType (unsigned id, unsigned tc);
 ********************************************************************************
 */
 
-/* Throws error if expression type isn't of given token-type */
-void requireExprType (unsigned tt, exprType expr);
+/* Extracts an IdEntry from the symbol table and initializes a exprType instance.
+ * Requires the IdEntry to already exist.
+*/
+exprType initExprTypeFromId (unsigned id, unsigned tc);
+
+/* Throws error if expression type isn't of given token-class and token-type */
+void requireExprType (unsigned tc, unsigned tt, exprType expr);
 
 /* Returns resulting exprType of an operation between two exprTypes. 
  * 1. If operator involves division, throw div-zero-error if 'b' is zero.

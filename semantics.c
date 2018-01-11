@@ -36,7 +36,6 @@ static double performOperation (unsigned operator, double a, double b) {
 ********************************************************************************
 */
 
-
 /* Returns zero and throws error if id of type-class tc isn't in symbol table. */
 unsigned existsId (unsigned id, unsigned tc) {
     IdEntry *entry;
@@ -50,16 +49,17 @@ unsigned existsId (unsigned id, unsigned tc) {
     return 1;
 }
 
-/* Returns nonzero if the given id of type-class tc has been initialized. 
- * A warning is also displayed. */
-unsigned isInitialized (unsigned id, unsigned tc) {
-    IdEntry *entry = containsIdEntry(id, tc, SYMTAB_SCOPE_ALL);
-    if (entry->rf == 0) {
+/* Displays warning if id of type-class tc is not initialized.
+  * Only checks current table scope. If id doesn't exist in scope, no warning
+  * is displayed.
+*/ 
+void isInitialized (unsigned id, unsigned tc) {
+    IdEntry *entry;
+    if ((entry = containsIdEntry(id, tc, currentTableScope())) != NULL && entry->rf == 0) {
         printWarning("\"%s\" of class \"%s\" exists but is uninitialized!", 
-            identifierAtIndex(id),
-            tokenClassName(tc));
+            identifierAtIndex(entry->id),
+            tokenClassName(entry->tc));
     }
-    return entry->rf;
 }
 
 /* Returns the token-type for an identifier. Must exist in symbol table. */
@@ -74,8 +74,27 @@ unsigned getIdTokenType (unsigned id, unsigned tc) {
 ********************************************************************************
 */
 
-/* Throws error if expression type isn't of given token-type */
-void requireExprType (unsigned tt, exprType expr) {
+/* Extracts an IdEntry from the symbol table and initializes a exprType instance.
+ * Requires the IdEntry to already exist.
+*/
+exprType initExprTypeFromId (unsigned id, unsigned tc) {
+    IdEntry *entry;
+
+    // (*). Extract IdEntry, verify exists.
+    if ((entry = containsIdEntry(id, tc, SYMTAB_SCOPE_ALL)) == NULL) {
+        fprintf(stderr, "Error: initExprTypeFromId: Null entry for \"%s\"!\n", identifierAtIndex(id));
+        exit(EXIT_FAILURE);
+    }
+
+    return initExprType(entry->tc, entry->tt, NIL);  
+}
+
+/* Throws error if expression type isn't of given token-class and token-type */
+void requireExprType (unsigned tc, unsigned tt, exprType expr) {
+    if (expr.tc != tc) {
+        printError("Expected class \"%s\" but got class \"%s\" instead!",
+        tokenClassName(tc), tokenClassName(expr.tc));
+    }
     if (expr.tt != tt) {
         printError("Expected type \"%s\", but got type \"%s\" instead!", 
         tokenTypeName(tt), tokenTypeName(expr.tt));
@@ -89,7 +108,13 @@ void requireExprType (unsigned tt, exprType expr) {
 exprType resolveArithmeticOperation (unsigned operator, exprType a, exprType b) {
     double *vp;
 
-    // (*). Verify operands are valid.
+    // (*). Verify operands have correct token-class.
+    if (a.tc != TC_SCALAR || b.tc != TC_SCALAR) {
+        printError("Arithmetic operation is undefined for non-scalar operands!");
+        return (exprType){.tt = UNDEFINED, .vi = NIL};
+    }
+
+    // (*). Verify operands have correct token-type.
     if (a.tt == UNDEFINED || b.tt == UNDEFINED) {
         printError("Arithmetic operation is undefined for operands of type: \"%s\"!\n", 
         tokenTypeName(UNDEFINED));
@@ -112,7 +137,7 @@ exprType resolveArithmeticOperation (unsigned operator, exprType a, exprType b) 
     }
 
     // (*). Return new exprType. Type promote resulting type if mismatched.
-    return (exprType){.tt = MAX(a.tt, b.tt), .vi = newValueIndex};
+    return initExprType(TC_SCALAR, MAX(a.tt, b.tt), newValueIndex);
 }
 
 
@@ -123,7 +148,13 @@ exprType resolveArithmeticOperation (unsigned operator, exprType a, exprType b) 
 */
 exprType resolveBooleanOperation (unsigned operator, exprType a, exprType b) {
 
-    // (1). Verify operands are valid!
+    // (*). Verify operands have correct token-class.
+    if (a.tc != TC_SCALAR || b.tc != TC_SCALAR) {
+        printError("Boolean operation is undefined for non-scalar operands!");
+        return (exprType){.tt = UNDEFINED, .vi = NIL};
+    }
+
+    // (*). Verify operands have correct token-type.
     if (a.tt == UNDEFINED || b.tt == UNDEFINED) {
         printError("Boolean operation is undefined for operands of type: \"%s\"!\n", 
         tokenTypeName(UNDEFINED));
@@ -138,13 +169,15 @@ exprType resolveBooleanOperation (unsigned operator, exprType a, exprType b) {
         newValueIndex = installNumber(performOperation(operator, *avp, *bvp));
     }
 
-    return (exprType){.tt = TT_INTEGER, .vi = newValueIndex};
+    return initExprType(TC_SCALAR, TT_INTEGER, newValueIndex);
 }
 
 /* Throws an warning if the token-type of the expression isn't an integer */
 void verifyGuardExpr (exprType expr) {
-    if (expr.tt == UNDEFINED) {
-        printError("Invalid guard expression of type \"%s\"!", tokenTypeName(expr.tt));
+    if (expr.tc != TC_SCALAR || expr.tt == UNDEFINED) {
+        printError("Guard expression must a \"%s\" of type \"%s\". Got \"%s\" of type \"%s\"!",
+            tokenClassName(TC_SCALAR), tokenTypeName(TT_INTEGER), tokenClassName(expr.tc),
+            tokenTypeName(expr.tt));
         return;
     }
     if (expr.tt != TT_INTEGER) {
@@ -274,10 +307,10 @@ void installRoutineArgs (unsigned id, varListType varList) {
         installIdEntry(id, TC_SCALAR, entry->tt);
     }
 
-    // (*). Verify argument-list token-class is scalar.
+    // (*). Verify argument-list token-class is scalar or vector.
     for (int i = 0; i < varList.length; i++) {
         varType var = varList.list[i];
-        if (var.tc != TC_SCALAR) {
+        if (var.tc != TC_SCALAR && var.tc != TC_VECTOR) {
             printError("Parameter \"%s\" in routine \"%s\" has illegal type-class \"%s\"!",
             identifierAtIndex(var.id), identifierAtIndex(id), tokenClassName(var.tc));
             return;
@@ -329,14 +362,20 @@ void verifyRoutineArgs(unsigned id, exprListType exprList) {
         return;
     }
 
-    // (2). Verify token-classes matches.
+    // (2). Verify token-class matches and warn for token-type tuncations.
     for (int i = 0; i < exprList.length; i++) {
         IdEntry *arg = (IdEntry *)entry->data.argv[i];
         exprType expr = exprList.list[i];
 
+        if (expr.tc != arg->tc) {
+            printError("Parameter %d of routine \"%s\" expects type-class \"%s\" but got \"%s\"!",
+                i + 1, identifierAtIndex(id), tokenClassName(arg->tc), tokenClassName(expr.tc));
+            continue;
+        }
+
         if (expr.tt > arg->tt) {
             printWarning("Argument %d of routine \"%s\" will be truncated!\n",
-                i, identifierAtIndex(id));
+                i + 1, identifierAtIndex(id));
         }
     }
 }
