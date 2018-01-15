@@ -356,8 +356,8 @@ void verifyRoutineArgs(unsigned id, exprListType exprList) {
     }
 
     // (1). Verify length matches.
-    if (entry->data.argc < exprList.length) {
-        printError("\"%s\" requires at most %d arguments, not %d!", 
+    if (entry->data.argc != exprList.length) {
+        printError("\"%s\" requires %d arguments, not %d!", 
         identifierAtIndex(id), entry->data.argc, exprList.length);
         return;
     }

@@ -32,6 +32,9 @@ comment         \{[^\}]*\}
 
 %%
 
+(?i:READLN)     { printToken(Control);   return MP_READLN;      }
+(?i:WRITELN)    { printToken(Control);   return MP_WRITELN;     }
+
 (?i:WHILE)      { printToken(Control);   return MP_WHILE;       }
 (?i:DO)         { printToken(Control);   return MP_DO;          }
 

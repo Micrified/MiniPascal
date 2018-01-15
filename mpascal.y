@@ -95,6 +95,10 @@ int yyerror(char *s) {
 %token MP_FSTOP
 %token MP_ELLIPSES
 
+// Reserved Tokens.
+%token MP_READLN
+%token MP_WRITELN
+
 // Unexpected Tokens.
 %token MP_WTF
 
@@ -316,6 +320,12 @@ factor  : identifier                                              { /* Verify sc
                                                                     } else {
                                                                       $$ = initExprType(UNDEFINED, UNDEFINED, NIL);
                                                                     }
+                                                                    freeExprList($3);
+                                                                  }
+        | MP_READLN MP_POPEN expressionList MP_PCLOSE            { /* Verify routine factor exists, and has proper arguments */
+                                                                    freeExprList($3);
+                                                                  }
+        | MP_WRITELN MP_POPEN expressionList MP_PCLOSE            { /* Verify routine factor exists, and has proper arguments */
                                                                     freeExprList($3);
                                                                   }
         | identifier MP_BOPEN expression MP_BCLOSE                { /* Verify vector factor exists, and indexing expression is valid */
