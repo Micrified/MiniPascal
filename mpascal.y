@@ -120,8 +120,6 @@ int yyerror(char *s) {
 %union {
   unsigned      num;
   descType      desc;
-  exprType      expr;
-  exprListType  exprList;
   varType       var;
   varListType   varList;
 }
@@ -129,10 +127,8 @@ int yyerror(char *s) {
 // Nonterminal return type rules.
 %type <num> standardType identifier statementList optionalStatements
 %type <desc> type
-%type <expr> factor term simpleExpression expression 
-%type <exprList> expressionList
-%type <var> variable subprogramHead
-%type <varList> identifierList parameterList arguments declarations
+%type <var> factor term simpleExpression expression variable subprogramHead
+%type <varList> expressionList identifierList parameterList arguments declarations
 // Starting Grammar Rule.
 %start program
 
@@ -247,9 +243,9 @@ statement : variable MP_ASSIGNOP expression                       { /* Verify ex
           | procedureStatement
           | compoundStatement
           | MP_IF expression MP_THEN statement MP_ELSE statement  { /* Verify boolean guard expression is of Integer token-type */
-                                                                    verifyGuardExpr($2); 
+                                                                    verifyGuardExprVar($2); 
                                                                   }
-          | MP_WHILE expression MP_DO statement                   { verifyGuardExpr($2); }             
+          | MP_WHILE expression MP_DO statement                   { verifyGuardExprVar($2); }             
           ;
 
 variable  : identifier                                            { /* Expect scalar id entry in symbol-table. Else install as undefined */
@@ -261,7 +257,7 @@ variable  : identifier                                            { /* Expect sc
                                                                   }                                                                                     
           | identifier MP_BOPEN expression MP_BCLOSE              { /* Expect vector id entry in symbol-table. Else install as undefined */
                                                                     if (existsId($1, TC_VECTOR)) {
-                                                                      requireExprType(TC_SCALAR, TT_INTEGER, $3); 
+                                                                      requireExprVarType(TC_SCALAR, TT_INTEGER, $3); 
                                                                       $$ = initVarType(TC_VECTOR, getIdTokenType($1, TC_VECTOR), $1);
                                                                     }
                                                                   }                  
@@ -271,12 +267,12 @@ procedureStatement  : identifier
                                                                       if (existsId($1, TC_ROUTINE)) { 
                                                                         verifyRoutineArgs($1, $3); 
                                                                       }
-                                                                      freeExprList($3);
+                                                                      freeVarList($3);
                                                                     }
                     ;
 
-expressionList  : expression                                      { $$ = insertExprList($1, initExprListType()); }                                                              
-                | expressionList MP_COMMA expression              { $$ = insertExprList($3, $1); }                
+expressionList  : expression                                      { $$ = insertVarType($1, initVarListType()); }                                                              
+                | expressionList MP_COMMA expression              { $$ = insertVarType($3, $1); }                
                 ;
 
 expression  : simpleExpression                                    { $$ = $1; }
@@ -305,39 +301,39 @@ term  : factor                                                    { $$ = $1; }
       | term MP_MODOP factor                                      { $$ = resolveArithmeticOperation(MP_MODOP, $1, $3); }
       ;
 
-factor  : identifier                                              { /* Verify scalar factor exists. Warn if uninitialized */
+factor  : identifier                                              { /* Verify variable factor exists. Warn if uninitialized */
                                                                     if (existsId($1, TC_ANY)) {
                                                                       isInitialized($1, TC_ANY);
-                                                                      $$ = initExprTypeFromId($1, TC_ANY);
+                                                                      $$ = initVarTypeFromId($1, TC_ANY);
                                                                     } else { 
-                                                                      $$ = initExprType(UNDEFINED, UNDEFINED, NIL); 
+                                                                      $$ = initExprVarType(UNDEFINED, UNDEFINED, NIL); 
                                                                     }
                                                                   }
         | identifier MP_POPEN expressionList MP_PCLOSE            { /* Verify routine factor exists, and has proper arguments */
                                                                     if (existsId($1, TC_ROUTINE)) { 
                                                                       verifyRoutineArgs($1, $3);
-                                                                      $$ = initExprType(TC_SCALAR, getIdTokenType($1, TC_ROUTINE), NIL); 
+                                                                      $$ = initExprVarType(TC_SCALAR, getIdTokenType($1, TC_ROUTINE), NIL); 
                                                                     } else {
-                                                                      $$ = initExprType(UNDEFINED, UNDEFINED, NIL);
+                                                                      $$ = initExprVarType(UNDEFINED, UNDEFINED, NIL);
                                                                     }
-                                                                    freeExprList($3);
+                                                                    freeVarList($3);
                                                                   }
-        | MP_READLN MP_POPEN expressionList MP_PCLOSE            { /* Verify routine factor exists, and has proper arguments */
-                                                                    freeExprList($3);
+        | MP_READLN MP_POPEN expressionList MP_PCLOSE             { /* Verify arguments for readln. */
+                                                                    freeVarList($3);
                                                                   }
-        | MP_WRITELN MP_POPEN expressionList MP_PCLOSE            { /* Verify routine factor exists, and has proper arguments */
-                                                                    freeExprList($3);
+        | MP_WRITELN MP_POPEN expressionList MP_PCLOSE            { /* Verify arguments for writeln. */
+                                                                    freeVarList($3);
                                                                   }
-        | identifier MP_BOPEN expression MP_BCLOSE                { /* Verify vector factor exists, and indexing expression is valid */
+        | identifier MP_BOPEN expression MP_BCLOSE                { /* Verify vector factor exists, and indexing expression-variable is valid */
                                                                     if (existsId($1, TC_VECTOR)) {
-                                                                      requireExprType(TC_SCALAR, TT_INTEGER, $3);
-                                                                      $$ = initExprType(TC_SCALAR, getIdTokenType($1, TC_VECTOR), NIL);
+                                                                      requireExprVarType(TC_SCALAR, TT_INTEGER, $3);
+                                                                      $$ = initExprVarType(TC_SCALAR, getIdTokenType($1, TC_VECTOR), NIL);
                                                                     } else {
-                                                                      $$ = initExprType(UNDEFINED, UNDEFINED, NIL);
+                                                                      $$ = initExprVarType(UNDEFINED, UNDEFINED, NIL);
                                                                     }
                                                                   } 
-        | MP_INTEGER                                              { $$ = initExprType(TC_SCALAR, TT_INTEGER, installNumber(atof(yytext))); }
-        | MP_REAL                                                 { $$ = initExprType(TC_SCALAR, TT_REAL, installNumber(atof(yytext))); }
+        | MP_INTEGER                                              { $$ = initExprVarType(TC_SCALAR, TT_INTEGER, installNumber(atof(yytext))); }
+        | MP_REAL                                                 { $$ = initExprVarType(TC_SCALAR, TT_REAL, installNumber(atof(yytext))); }
         | MP_POPEN expression MP_PCLOSE                           { $$ = $2; }
         ;
 

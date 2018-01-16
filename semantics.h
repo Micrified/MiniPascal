@@ -29,34 +29,28 @@ unsigned getIdTokenType (unsigned id, unsigned tc);
 
 /*
 ********************************************************************************
-*                             Expression Prototypes                            *
+*                          Variable-Expression Prototypes                      *
 ********************************************************************************
 */
 
-/* Extracts an IdEntry from the symbol table and initializes a exprType instance.
- * Requires the IdEntry to already exist.
-*/
-exprType initExprTypeFromId (unsigned id, unsigned tc);
+/* Throws error if expression-variable type isn't of given token-class and token-type */
+void requireExprVarType (unsigned tc, unsigned tt, varType var);
 
-/* Throws error if expression type isn't of given token-class and token-type */
-void requireExprType (unsigned tc, unsigned tt, exprType expr);
-
-/* Returns resulting exprType of an operation between two exprTypes. 
+/* Returns resulting exprVarType of an operation between two exprVarTypes. 
  * 1. If operator involves division, throw div-zero-error if 'b' is zero.
  * 2. If any operand has no constant value, then result is just the token-type.
  * Results are type-promoted to reals if operands mismatch.  */ 
-exprType resolveArithmeticOperation (unsigned operator, exprType a, exprType b);
+varType resolveArithmeticOperation (unsigned operator, varType a, varType b);
 
-/* Returns resulting exprType for a boolean operation between two exprTypes.
+/* Returns resulting exprVarType for a boolean operation between two exprVarTypes.
  * 1. If any operand is undefined, an error is thrown.
  * 2. If any operand has no constant value, then result is just type MP_INTEGER.
  * Results of comparisons are always MP_INTEGER where defined.
 */
-exprType resolveBooleanOperation (unsigned operator, exprType a, exprType b);
+varType resolveBooleanOperation (unsigned operator, varType a, varType b);
 
-
-/* Throws an warning if the token-type of the expression isn't an integer */
-void verifyGuardExpr (exprType expr);
+/* Throws a warning if token-type of variable-expression isn't integer */
+void verifyGuardExprVar (varType var);
 
 /*
 ********************************************************************************
@@ -69,13 +63,13 @@ void verifyGuardExpr (exprType expr);
 */
 varType initVarTypeFromId (unsigned id, unsigned tc);
 
-/* Resolves assignment of expression to variable.
+/* Resolves assignment of expression-variable to variable.
  * 1. If variable token-class is not scalar, an error is thrown.
- * 2. If expression token-type is undefined, an error is thrown.
+ * 2. If expression-variable token-type is undefined, an error is thrown.
  * 3. Type promotion or truncation occurs in case of mismatching primitives.
  * 4. Sets the reference flag (rf) to true.
  */ 
-void verifyAssignment (varType var, exprType expr);
+void verifyAssignment (varType var, varType exprVar);
 
 /* Maps a descriptor type to a list of varTypes. Returns varListType instance */
 varListType mapDescToVarList (descType desc, varListType varList);
@@ -101,12 +95,12 @@ unsigned installRoutine (unsigned id, unsigned tt);
 /* Installs all routine arguments in the symbol table under 'id'. */
 void installRoutineArgs (unsigned id, varListType varList);
 
-/* Verifies that expressions supplied to function or procedure identified by 'id'
- * match the parameter requirements. Does nothing if 'id' not a routine.
- * 1) Verifies expression list count matches argument count.
- * 2) Verifies expression token-types match argument token-types.
+/* Verifies that expression-variable supplied to routine identified by 'id'
+ * match the parameter requirements. Requires routine IdEntry exist!
+ * 1) Verifies expression-variable list count matches argument count.
+ * 2) Verifies expression-variable token-types match argument token-types.
 */
-void verifyRoutineArgs (unsigned id, exprListType exprList);
+void verifyRoutineArgs (unsigned id, varListType exprVarList);
 
 /* Verifies that a function routine has an initialized return variable.
  * This function must be invoked before dropping the table scope level.

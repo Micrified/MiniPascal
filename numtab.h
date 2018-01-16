@@ -17,10 +17,7 @@
 ********************************************************************************
 *                              Symbolic Constants                              *
 ********************************************************************************
-*/
-
-// Represents an invalid table number index.
-#define NIL         -1      
+*/  
 
 /*
 ********************************************************************************
@@ -32,10 +29,10 @@
 void initNumberTable ();
 
 /* Installs given constant in the table and returns its index */
-int installNumber (double n);
+unsigned installNumber (double n);
 
 /* Returns pointer to constant at given index in the string table. */
-double *numberAtIndex (int i);
+double *numberAtIndex (unsigned vi);
 
 /* Frees the number table */
 void freeNumberTable ();

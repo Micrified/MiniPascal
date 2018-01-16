@@ -26,47 +26,6 @@ const char *tokenClassName (unsigned tc) {
     }
     return "(Unknown Token-Class)";
 }
-/*
-********************************************************************************
-*                              Expression Functions                            *
-********************************************************************************
-*/
-
-/* Initializes a new exprType with given token-class (tc), token-type (tt),
- * and value-index (vi).
-*/
-exprType initExprType (unsigned tc, unsigned tt, unsigned vi) {
-    return (exprType){.tc = tc, .tt = tt, .vi = vi};
-}
-
-/*
-********************************************************************************
-*                            Expression-List Functions                         *
-********************************************************************************
-*/
-
-/* Initializes a new exprListType */
-exprListType initExprListType (void) {
-    return (exprListType){.length = 0, .list = NULL};
-}
-
-/* Frees allocated memory in an exprListType */
-void freeExprList(exprListType exprList) {
-    free(exprList.list);
-}
-
-/* Allocates a copy of the given exprType and places it in returned exprList list. */
-exprListType insertExprList (exprType expr, exprListType exprList) {
-    
-    if ((exprList.list = realloc(exprList.list, (exprList.length + 1) * sizeof(exprType))) == NULL) {
-        fprintf(stderr, "Error: insertExprList: List reallocation failed!\n");
-        exit(EXIT_FAILURE);
-    }
-
-    exprList.list[exprList.length++] = expr;
-
-    return exprList;
-}
 
 /*
 ********************************************************************************
@@ -75,10 +34,17 @@ exprListType insertExprList (exprType expr, exprListType exprList) {
 */
 
 /* Initializes a new varType with the given token-class (tc), token-type (tt) and 
- *identifier-index (id).
+ * identifier-index (id).
 */
 varType initVarType (unsigned tc, unsigned tt, unsigned id) {
-    return (varType){.tc = tc, .tt = tt, .id = id};
+    return (varType){.tc = tc, .tt = tt, .vi = NIL, .id = id};
+}
+
+/* Initializes a new expression varType with the given tokenc-class (tc), 
+ * token-type (tt), and value-index (vi). This type has no symbol table entry.
+*/
+varType initExprVarType (unsigned tc, unsigned tt, unsigned vi) {
+    return (varType){.tc = tc, .tt = tt, .vi = vi, .id = NIL};
 }
 
 /*

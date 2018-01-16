@@ -49,7 +49,7 @@ void initNumberTable () {
 }
 
 /* Installs given constant in the table and returns its index */
-int installNumber (double n) {
+unsigned installNumber (double n) {
     if (np >= numTableSize) {
         resizeNumberTable(2 * numTableSize);
     }
@@ -58,11 +58,11 @@ int installNumber (double n) {
 }
 
 /* Returns pointer to constant at given index in the string table. */
-double *numberAtIndex (int i) {
-    if (i < 0 || i >= np) {
+double *numberAtIndex (unsigned vi) {
+    if (vi >= np) {
         return NULL;
     }
-    return numTable + i;
+    return numTable + vi;
 }
 
 /* Frees the number table */
