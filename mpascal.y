@@ -260,13 +260,21 @@ variable  : identifier                                            { /* Expect sc
                                                                       requireExprVarType(TC_SCALAR, TT_INTEGER, $3); 
                                                                       $$ = initVarType(TC_VECTOR, getIdTokenType($1, TC_VECTOR), $1);
                                                                     }
-                                                                  }                  
-
+                                                                  } 
+                                                                                   
 procedureStatement  : identifier                                 
-                    | identifier MP_POPEN expressionList MP_PCLOSE { /* Verify call to routine is valid */
+                    | identifier MP_POPEN expressionList MP_PCLOSE  { /* Verify call to routine is valid */
                                                                       if (existsId($1, TC_ROUTINE)) { 
                                                                         verifyRoutineArgs($1, $3); 
                                                                       }
+                                                                      freeVarList($3);
+                                                                    }
+                    | MP_READLN MP_POPEN expressionList MP_PCLOSE   { /* Verify arguments for readln. */
+                                                                      verifyReadlnArgs($3);
+                                                                      freeVarList($3);
+                                                                    }
+                    | MP_WRITELN MP_POPEN expressionList MP_PCLOSE  { /* Verify arguments for writeln. */
+                                                                      verifyWritelnArgs($3);
                                                                       freeVarList($3);
                                                                     }
                     ;
@@ -316,12 +324,6 @@ factor  : identifier                                              { /* Verify va
                                                                     } else {
                                                                       $$ = initExprVarType(UNDEFINED, UNDEFINED, NIL);
                                                                     }
-                                                                    freeVarList($3);
-                                                                  }
-        | MP_READLN MP_POPEN expressionList MP_PCLOSE             { /* Verify arguments for readln. */
-                                                                    freeVarList($3);
-                                                                  }
-        | MP_WRITELN MP_POPEN expressionList MP_PCLOSE            { /* Verify arguments for writeln. */
                                                                     freeVarList($3);
                                                                   }
         | identifier MP_BOPEN expression MP_BCLOSE                { /* Verify vector factor exists, and indexing expression-variable is valid */

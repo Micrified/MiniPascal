@@ -107,4 +107,18 @@ void verifyRoutineArgs (unsigned id, varListType exprVarList);
  */
 void verifyFunctionReturnValue (unsigned id);
 
+/*
+********************************************************************************
+*                           Readln/Writeln Prototypes                          *
+********************************************************************************
+*/
+
+/* Verifies all arguments supplied to readln exist and are variables.
+ * Marks all arguments as initialized.
+*/ 
+void verifyReadlnArgs (varListType exprVarList);
+
+/* Verifies all arguments are either initialized variables or constants. */
+void verifyWritelnArgs (varListType exprVarList);
+
 #endif

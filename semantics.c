@@ -382,3 +382,62 @@ void verifyFunctionReturnValue (unsigned id) {
         printError("Return value for function \"%s\" is uninitialized!", identifierAtIndex(id));
     }
 }
+
+/*
+********************************************************************************
+*                           Readln/Writeln Functions                           *
+********************************************************************************
+*/
+
+/* Verifies all arguments supplied to readln exist and are variables.
+ * Marks all arguments as initialized.
+*/ 
+void verifyReadlnArgs (varListType exprVarList) {
+    IdEntry *entry;
+    varType var;
+
+    // (1). Verify all arguments exist and are variables.
+    for (int i = 0; i < exprVarList.length; i++) {
+        var = exprVarList.list[i];
+
+        if (var.id == NIL || (entry = containsIdEntry(var.id, TC_SCALAR, SYMTAB_SCOPE_ALL)) == NULL) {
+            printError("Argument %d does not exist or is not of required class \"%s\" in readln!",
+                i + 1, tokenClassName(TC_SCALAR));
+        } else {
+
+            // Mark as referenced if valid variable.
+            entry->rf = 1;
+        }
+    }
+}
+
+/* Verifies all arguments are scalar and initialized if variables. */
+void verifyWritelnArgs (varListType exprVarList) {
+    IdEntry *entry;
+    varType var;
+
+    for (int i = 0; i < exprVarList.length; i++) {
+        var = exprVarList.list[i];
+
+        // Verify that given argument is scalar.
+        if (var.tc != TC_SCALAR) {
+            printError("Argument %d in writeln is not of required type-class \"%s\"!",
+                i + 1, tokenClassName(var.tc));
+            continue;
+        }
+
+        // Verify that any variable argument is initialized.
+        if (var.id != NIL) {
+            if ((entry = containsIdEntry(var.id, TC_SCALAR, SYMTAB_SCOPE_ALL)) == NULL) {
+                fprintf(stderr, "Error: verifyWritelnArgs: var with id has no table entry!\n");
+                exit(EXIT_FAILURE);
+            }
+            if (entry->rf == 0) {
+                printWarning("Argument %d in writeln (\"%s\" \"%s\") is not initialized!",
+                i + 1, tokenClassName(entry->tc), identifierAtIndex(var.id));
+            }
+            continue;
+        }
+    }
+
+}
