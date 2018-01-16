@@ -140,7 +140,7 @@ int yyerror(char *s) {
 ********************************************************************************
 */
 
-program : MP_PROGRAM MP_ID MP_POPEN identifierList MP_PCLOSE MP_SCOLON declarations { /* Install declarations in symbol-table */ installVarList($7); } 
+program : MP_PROGRAM MP_ID MP_POPEN identifierList MP_PCLOSE MP_SCOLON declarations { /* Install declarations in symbol-table */ installVarList($7); freeVarList($7); } 
           subprogramDeclarations 
           compoundStatement 
           MP_FSTOP MP_EOF 
@@ -181,7 +181,8 @@ subprogramDeclarations  : subprogramDeclarations subprogramDeclaration MP_SCOLON
                         ;
 
 subprogramDeclaration : subprogramHead declarations { /* Install declarations in symbol-table */
-                                                      installVarList($2); 
+                                                      installVarList($2);
+                                                      freeVarList($2);
                                                     } 
                         compoundStatement           { /* If routine is a function, warn if return variable uninitialized  */
                                                       if ($1.tt != UNDEFINED) {
