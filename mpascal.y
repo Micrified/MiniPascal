@@ -20,8 +20,11 @@
 /* Custom Routine Imports */
 #include "semantics.h"  // Semantic Checking Routines.
 
-/* Variables local to lex.yy.c */
+/* Variables local to debug. */
 extern int inDebug;
+extern int inQuiet;
+
+/* Variables local to lex.yy.c */
 extern int yylex();
 extern int yylineno;
 extern char *yytext;
@@ -364,6 +367,9 @@ void parseArguments (int argc, char *argv[]) {
     switch (*++arg) {
       case 'd':
         inDebug = 1; 
+        break;
+      case 'q':
+        inQuiet = 1;
         break;
       default:
         fprintf(stderr, "Unknown argument \"-%s\"!\n", arg);

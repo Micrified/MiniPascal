@@ -8,6 +8,9 @@
 
 #define MAX_LINE_DEBUG  1000
 
+// No-Warnings Flag.
+int noWarnings;
+
 // Line buffer for symantic debug purposes.
 char lineBuffer[MAX_LINE_DEBUG];
 
@@ -121,6 +124,11 @@ void printWarning (char *msg, ...) {
     char *p, *sval;
     int ival;
     double fval;
+
+    // If in quiet mode: Do not print the warning.
+    if (inQuiet) { 
+        return;
+    }
 
     // Initialize the variadic argument list.
     va_list ap;

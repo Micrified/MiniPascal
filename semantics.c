@@ -277,6 +277,7 @@ unsigned installRoutine (unsigned id, unsigned tt) {
 
     // (*). Install routine in symbol table.
     installIdEntry(id, TC_ROUTINE, tt);
+
     return 1;
 }
 

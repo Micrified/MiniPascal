@@ -21,6 +21,12 @@
 ***************************************************************************
 */
 
+// Debug Mode Flag: If set, parsed file is written to stderr.
+int inDebug;
+
+// Quiet Mode Flag: If set, warnings are disabled.
+int inQuiet;
+
 typedef enum {
     Structure,
     Control,
@@ -34,7 +40,6 @@ typedef enum {
 
 extern char *yytext;
 extern int yylineno;
-extern int inDebug;
 
 /*
 ***************************************************************************

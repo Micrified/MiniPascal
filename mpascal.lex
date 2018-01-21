@@ -10,9 +10,6 @@
      ***************************************************************************
     */
 
-    /* Debug flag */
-    int inDebug = 0;
-
     /* Debugging toolset */
     #include "debug.c"
 

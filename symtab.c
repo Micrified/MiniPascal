@@ -241,7 +241,7 @@ IdEntry *installIdEntry (unsigned id, unsigned tc, unsigned tt) {
     entry->data = (IdData){.argc = 0, .argv = NULL};
 
     // Insert new entry at list head. Then return pointer to entry.
-    symTable[h][lvl] = insertNode(entry, lp);
+    symTable[h][lvl] = insertNode(entry, symTable[h][lvl]);
     return symTable[h][lvl]->entry;
 }
 
