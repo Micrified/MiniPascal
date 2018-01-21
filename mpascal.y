@@ -26,6 +26,7 @@ extern int inQuiet;
 
 /* Variables local to lex.yy.c */
 extern int yylex();
+extern void yylex_destroy();
 extern int yylineno;
 extern char *yytext;
 
@@ -211,7 +212,7 @@ subprogramHead  : MP_FUNCTION identifier arguments MP_COLON standardType MP_SCOL
                                                                                       }
                                                                                       freeVarList($3);
                                                                                       $$ = initVarType(TC_ROUTINE, UNDEFINED, $2);
-                                                                                    }                      
+                                                                                    }                     
                 ;
 
 arguments : MP_POPEN parameterList MP_PCLOSE                      { $$ = $2; }
@@ -226,11 +227,7 @@ parameterList : identifierList MP_COLON type                          { /* Map a
                                                                       }
               ;
 
-compoundStatement : MP_BEGIN optionalStatements MP_END            { /* Print a warning if a compound statment is left empty */
-                                                                    if ($2 == 0) {
-                                                                      printWarning("Empty compound statement!"); 
-                                                                    }
-                                                                  }            
+compoundStatement : MP_BEGIN optionalStatements MP_END    
                   ;
 
 optionalStatements  : statementList                               { $$ = $1; }                              
@@ -397,6 +394,9 @@ int main(int argc, char *argv[]) {
   freeNumberTable();
   freeStringTable();
   freeSymbolTables();
+
+  // Free Flex memory.
+  yylex_destroy();
   
   return EXIT_SUCCESS;
 }
