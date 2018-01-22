@@ -10,9 +10,6 @@
      ***************************************************************************
     */
 
-    /* Debug flag */
-    int inDebug = 0;
-
     /* Debugging toolset */
     #include "debug.c"
 
@@ -31,6 +28,9 @@ mulop           [*]
 comment         \{[^\}]*\}
 
 %%
+
+(?i:READLN)     { printToken(Control);   return MP_READLN;      }
+(?i:WRITELN)    { printToken(Control);   return MP_WRITELN;     }
 
 (?i:WHILE)      { printToken(Control);   return MP_WHILE;       }
 (?i:DO)         { printToken(Control);   return MP_DO;          }

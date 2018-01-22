@@ -18,6 +18,9 @@
 ********************************************************************************
 */
 
+// Represents an invalid table number index.
+#define NIL         -1    
+
 // Type: Undefined.
 #define UNDEFINED    0
 
@@ -42,23 +45,11 @@ typedef struct {
     unsigned tt;            // Token-Type.
 } descType;
 
-// YYSTYPE: Expression data type.
-typedef struct {
-    unsigned    tc;         // Token-Class.
-    unsigned    tt;         // Token-Type.
-    int         vi;         // Value-Index: Index of constant value in numtab.
-} exprType;
-
-// YYSTYPE: Expression-List data type.
-typedef struct {
-    unsigned    length;     // Length of list.
-    exprType    *list;      // Allocated list.
-} exprListType;
-
 // YYSTYPE: Variable data type.
 typedef struct {
     unsigned tc;            // Token-Class.
     unsigned tt;            // Token-Type.
+    unsigned vi;            // Value-Index: Index of constant value in numtab.
     unsigned id;            // Identifier-Index: Index of the identifier in strtab.
 } varType;
 
@@ -82,40 +73,19 @@ const char *tokenClassName (unsigned tc);
 
 /*
 ********************************************************************************
-*                              Expression Prototypes                           *
-********************************************************************************
-*/
-
-/* Initializes a new exprType with given token-class (tc), token-type (tt),
- * and value-index (vi).
-*/
-exprType initExprType (unsigned tc, unsigned tt, unsigned vi);
-
-/*
-********************************************************************************
-*                            Expression-List Prototypes                        *
-********************************************************************************
-*/
-
-/* Initializes a new exprListType */
-exprListType initExprListType (void);
-
-/* Frees allocated memory in an exprListType */
-void freeExprList (exprListType exprList);
-
-/* Allocates a copy of the given exprType and places it in returned exprList list. */
-exprListType insertExprList (exprType expr, exprListType exprList);
-
-/*
-********************************************************************************
 *                               Variable Prototypes                            *
 ********************************************************************************
 */
 
 /* Initializes a new varType with the given token-class (tc), token-type (tt) and 
- *identifier-index (id).
+ * identifier-index (id).
 */
 varType initVarType (unsigned tc, unsigned tt, unsigned id);
+
+/* Initializes a new expression varType with the given tokenc-class (tc), 
+ * token-type (tt), and value-index (vi). This type has no symbol table entry.
+*/
+varType initExprVarType (unsigned tc, unsigned tt, unsigned vi);
 
 /*
 ********************************************************************************

@@ -74,58 +74,43 @@ unsigned getIdTokenType (unsigned id, unsigned tc) {
 ********************************************************************************
 */
 
-/* Extracts an IdEntry from the symbol table and initializes a exprType instance.
- * Requires the IdEntry to already exist.
-*/
-exprType initExprTypeFromId (unsigned id, unsigned tc) {
-    IdEntry *entry;
-
-    // (*). Extract IdEntry, verify exists.
-    if ((entry = containsIdEntry(id, tc, SYMTAB_SCOPE_ALL)) == NULL) {
-        fprintf(stderr, "Error: initExprTypeFromId: Null entry for \"%s\"!\n", identifierAtIndex(id));
-        exit(EXIT_FAILURE);
-    }
-
-    return initExprType(entry->tc, entry->tt, NIL);  
-}
-
-/* Throws error if expression type isn't of given token-class and token-type */
-void requireExprType (unsigned tc, unsigned tt, exprType expr) {
-    if (expr.tc != tc) {
+/* Throws error if expression-variable type isn't of given token-class and token-type */
+void requireExprVarType (unsigned tc, unsigned tt, varType var) {
+    if (var.tc != tc) {
         printError("Expected class \"%s\" but got class \"%s\" instead!",
-        tokenClassName(tc), tokenClassName(expr.tc));
+            tokenClassName(tc), tokenClassName(var.tc));
     }
-    if (expr.tt != tt) {
-        printError("Expected type \"%s\", but got type \"%s\" instead!", 
-        tokenTypeName(tt), tokenTypeName(expr.tt));
+    if (var.tt != tt) {
+        printError("Expected type \"%s\" but got type \"%s\" instead!",
+            tokenTypeName(tt), tokenTypeName(var.tt));
     }
 }
 
-/* Returns resulting exprType of an operation between two exprTypes. 
+/* Returns resulting exprVarType of an operation between two exprVarTypes. 
  * 1. If operator involves division, throw div-zero-error if 'b' is zero.
  * 2. If any operand has no constant value, then result is just the token-type.
  * Results are type-promoted to reals if operands mismatch.  */ 
-exprType resolveArithmeticOperation (unsigned operator, exprType a, exprType b) {
+varType resolveArithmeticOperation (unsigned operator, varType a, varType b) {
     double *vp;
 
     // (*). Verify operands have correct token-class.
     if (a.tc != TC_SCALAR || b.tc != TC_SCALAR) {
         printError("Arithmetic operation is undefined for non-scalar operands!");
-        return (exprType){.tt = UNDEFINED, .vi = NIL};
+        return initExprVarType(UNDEFINED, UNDEFINED, NIL);
     }
 
     // (*). Verify operands have correct token-type.
     if (a.tt == UNDEFINED || b.tt == UNDEFINED) {
         printError("Arithmetic operation is undefined for operands of type: \"%s\"!\n", 
         tokenTypeName(UNDEFINED));
-        return (exprType){.tt = UNDEFINED, .vi = NIL};
+        return initExprVarType(TC_SCALAR, UNDEFINED, NIL);
     }
 
     // (1). Check for division by zero. 
     if ((operator == MP_DIVOP || operator == MP_MODOP) && 
         (vp = numberAtIndex(b.vi)) != NULL && (*vp == 0.0)) {
         printError("Division by zero!");
-        return (exprType){.tt = UNDEFINED, .vi = NIL};
+        return initExprVarType(TC_SCALAR, UNDEFINED, NIL);
     }
 
     // (2). Determine resulting constant value.
@@ -136,29 +121,28 @@ exprType resolveArithmeticOperation (unsigned operator, exprType a, exprType b) 
         newValueIndex = installNumber(performOperation(operator, *avp, *bvp));
     }
 
-    // (*). Return new exprType. Type promote resulting type if mismatched.
-    return initExprType(TC_SCALAR, MAX(a.tt, b.tt), newValueIndex);
+    // (*). Return new exprVarType. Type promote resulting type if mismatched.
+    return initExprVarType(TC_SCALAR, MAX(a.tt, b.tt), newValueIndex);
 }
 
-
-/* Returns resulting exprType for a boolean operation between two exprTypes.
+/* Returns resulting exprVarType for a boolean operation between two exprVarTypes.
  * 1. If any operand is undefined, an error is thrown.
  * 2. If any operand has no constant value, then result is just type MP_INTEGER.
  * Results of comparisons are always MP_INTEGER where defined.
 */
-exprType resolveBooleanOperation (unsigned operator, exprType a, exprType b) {
+varType resolveBooleanOperation (unsigned operator, varType a, varType b) {
 
     // (*). Verify operands have correct token-class.
     if (a.tc != TC_SCALAR || b.tc != TC_SCALAR) {
         printError("Boolean operation is undefined for non-scalar operands!");
-        return (exprType){.tt = UNDEFINED, .vi = NIL};
+        return initExprVarType(UNDEFINED, UNDEFINED, NIL);
     }
 
     // (*). Verify operands have correct token-type.
     if (a.tt == UNDEFINED || b.tt == UNDEFINED) {
         printError("Boolean operation is undefined for operands of type: \"%s\"!\n", 
         tokenTypeName(UNDEFINED));
-        return (exprType){.tt = UNDEFINED, .vi = NIL};
+        return initExprVarType(TC_SCALAR, UNDEFINED, NIL);
     }
 
     // (2). Determine resulting constant value.
@@ -169,18 +153,19 @@ exprType resolveBooleanOperation (unsigned operator, exprType a, exprType b) {
         newValueIndex = installNumber(performOperation(operator, *avp, *bvp));
     }
 
-    return initExprType(TC_SCALAR, TT_INTEGER, newValueIndex);
+    // (*). Return new exprVarType.
+    return initExprVarType(TC_SCALAR, TT_INTEGER, newValueIndex);
 }
 
-/* Throws an warning if the token-type of the expression isn't an integer */
-void verifyGuardExpr (exprType expr) {
-    if (expr.tc != TC_SCALAR || expr.tt == UNDEFINED) {
+/* Throws a warning if token-type of variable-expression isn't integer */
+void verifyGuardExprVar (varType var) {
+    if (var.tc != TC_SCALAR || var.tt == UNDEFINED) {
         printError("Guard expression must a \"%s\" of type \"%s\". Got \"%s\" of type \"%s\"!",
-            tokenClassName(TC_SCALAR), tokenTypeName(TT_INTEGER), tokenClassName(expr.tc),
-            tokenTypeName(expr.tt));
+            tokenClassName(TC_SCALAR), tokenTypeName(TT_INTEGER), tokenClassName(var.tc),
+            tokenTypeName(var.tt));
         return;
     }
-    if (expr.tt != TT_INTEGER) {
+    if (var.tt != TT_INTEGER) {
         printWarning("Guard expression will be truncated!");
     }
 }
@@ -206,13 +191,13 @@ varType initVarTypeFromId (unsigned id, unsigned tc) {
     return initVarType(entry->tc, entry->tt, id);
 }
 
-/* Resolves assignment of expression to variable.
+/* Resolves assignment of expression-variable to variable.
  * 1. If variable token-class is not scalar, an error is thrown.
- * 2. If expression token-type is undefined, an error is thrown.
+ * 2. If expression-variable token-type is undefined, an error is thrown.
  * 3. Type promotion or truncation occurs in case of mismatching primitives.
  * 4. Sets the reference flag (rf) to true.
  */ 
-void verifyAssignment (varType var, exprType expr) {
+void verifyAssignment (varType var, varType exprVar) {
 
     // (1). Verify variable token-class is assignable.
     if (var.tc != TC_SCALAR && var.tc != TC_VECTOR) {
@@ -221,18 +206,18 @@ void verifyAssignment (varType var, exprType expr) {
         return;
     }
 
-    // (2). Verify that expression token-type is primitive.
-    if (expr.tt == UNDEFINED) {
+    // (2). Verify that expression-variable token-type is primitive.
+    if (exprVar.tt == UNDEFINED) {
         printError("\"%s\" may not be assigned to \"%s\" \"%s\"!", 
-        tokenTypeName(expr.tt), tokenClassName(var.tc), tokenClassName(var.tt));
+        tokenTypeName(exprVar.tt), tokenClassName(var.tc), tokenTypeName(var.tt));
         return;
     }
 
-    // (*). Extract token-type of id in var. Expects IdEntry to exist.
+    // (*). Extract IdEntry of id in var (Expects IdEntry to exist).
     IdEntry *entry = containsIdEntry(var.id, var.tc, SYMTAB_SCOPE_ALL);
 
-    // (3). Verify exprType token-type matches.
-    if (entry->tt < expr.tt) {
+    // (3). Verify exprVarType token-type matches.
+    if (entry->tt < exprVar.tt) {
         printWarning("Value assigned to \"%s\" \"%s\" will be truncated!",
             tokenTypeName(entry->tt),
             identifierAtIndex(var.id)
@@ -292,6 +277,7 @@ unsigned installRoutine (unsigned id, unsigned tt) {
 
     // (*). Install routine in symbol table.
     installIdEntry(id, TC_ROUTINE, tt);
+
     return 1;
 }
 
@@ -341,12 +327,12 @@ void installRoutineArgs (unsigned id, varListType varList) {
     entry->data.argv = (void **)argv;
 }
 
-/* Verifies that expressions supplied to function or procedure identified by 'id'
- * match the parameter requirements. Does nothing if 'id' not a routine.
- * 1) Verifies expression list count matches argument count.
- * 2) Verifies expression token-types match argument token-types.
+/* Verifies that expression-variable supplied to routine identified by 'id'
+ * match the parameter requirements. Requires routine IdEntry exist!
+ * 1) Verifies expression-variable list count matches argument count.
+ * 2) Verifies expression-variable token-types match argument token-types.
 */
-void verifyRoutineArgs(unsigned id, exprListType exprList) {
+void verifyRoutineArgs (unsigned id, varListType exprVarList) {
     IdEntry *entry;
 
     // (*). Extract IdEntry, verify exists.
@@ -356,24 +342,24 @@ void verifyRoutineArgs(unsigned id, exprListType exprList) {
     }
 
     // (1). Verify length matches.
-    if (entry->data.argc < exprList.length) {
-        printError("\"%s\" requires at most %d arguments, not %d!", 
-        identifierAtIndex(id), entry->data.argc, exprList.length);
+    if (entry->data.argc != exprVarList.length) {
+        printError("\"%s\" requires %d arguments, not %d!", 
+        identifierAtIndex(id), entry->data.argc, exprVarList.length);
         return;
     }
 
     // (2). Verify token-class matches and warn for token-type tuncations.
-    for (int i = 0; i < exprList.length; i++) {
+    for (int i = 0; i < exprVarList.length; i++) {
         IdEntry *arg = (IdEntry *)entry->data.argv[i];
-        exprType expr = exprList.list[i];
+        varType exprVar = exprVarList.list[i];
 
-        if (expr.tc != arg->tc) {
+        if (exprVar.tc != arg->tc) {
             printError("Parameter %d of routine \"%s\" expects type-class \"%s\" but got \"%s\"!",
-                i + 1, identifierAtIndex(id), tokenClassName(arg->tc), tokenClassName(expr.tc));
+                i + 1, identifierAtIndex(id), tokenClassName(arg->tc), tokenClassName(exprVar.tc));
             continue;
         }
 
-        if (expr.tt > arg->tt) {
+        if (exprVar.tt > arg->tt) {
             printWarning("Argument %d of routine \"%s\" will be truncated!\n",
                 i + 1, identifierAtIndex(id));
         }
@@ -396,4 +382,63 @@ void verifyFunctionReturnValue (unsigned id) {
     if (entry->rf == 0) {
         printError("Return value for function \"%s\" is uninitialized!", identifierAtIndex(id));
     }
+}
+
+/*
+********************************************************************************
+*                           Readln/Writeln Functions                           *
+********************************************************************************
+*/
+
+/* Verifies all arguments supplied to readln exist and are variables.
+ * Marks all arguments as initialized.
+*/ 
+void verifyReadlnArgs (varListType exprVarList) {
+    IdEntry *entry;
+    varType var;
+
+    // (1). Verify all arguments exist and are variables.
+    for (int i = 0; i < exprVarList.length; i++) {
+        var = exprVarList.list[i];
+
+        if (var.id == NIL || (entry = containsIdEntry(var.id, TC_SCALAR, SYMTAB_SCOPE_ALL)) == NULL) {
+            printError("Argument %d does not exist or is not of required class \"%s\" in readln!",
+                i + 1, tokenClassName(TC_SCALAR));
+        } else {
+
+            // Mark as referenced if valid variable.
+            entry->rf = 1;
+        }
+    }
+}
+
+/* Verifies all arguments are scalar and initialized if variables. */
+void verifyWritelnArgs (varListType exprVarList) {
+    IdEntry *entry;
+    varType var;
+
+    for (int i = 0; i < exprVarList.length; i++) {
+        var = exprVarList.list[i];
+
+        // Verify that given argument is scalar.
+        if (var.tc != TC_SCALAR) {
+            printError("Argument %d in writeln is not of required type-class \"%s\"!",
+                i + 1, tokenClassName(var.tc));
+            continue;
+        }
+
+        // Verify that any variable argument is initialized.
+        if (var.id != NIL) {
+            if ((entry = containsIdEntry(var.id, TC_SCALAR, SYMTAB_SCOPE_ALL)) == NULL) {
+                fprintf(stderr, "Error: verifyWritelnArgs: var with id has no table entry!\n");
+                exit(EXIT_FAILURE);
+            }
+            if (entry->rf == 0) {
+                printWarning("Argument %d in writeln (\"%s\" \"%s\") is not initialized!",
+                i + 1, tokenClassName(entry->tc), identifierAtIndex(var.id));
+            }
+            continue;
+        }
+    }
+
 }
