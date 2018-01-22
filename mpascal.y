@@ -144,11 +144,12 @@ int yyerror(char *s) {
 ********************************************************************************
 */
 
-program : MP_PROGRAM MP_ID MP_POPEN identifierList MP_PCLOSE MP_SCOLON declarations { /* Install declarations in symbol-table */ installVarList($7); freeVarList($7); } 
+program : MP_PROGRAM MP_ID MP_POPEN identifierList { /* Ignore program parameters */ freeVarList($4); } 
+          MP_PCLOSE MP_SCOLON declarations { /* Install declarations in symbol-table */ installVarList($8); freeVarList($8); } 
           subprogramDeclarations 
           compoundStatement 
           MP_FSTOP MP_EOF 
-          { printf("ACCEPTED\n"); exit(0); }
+          { printf("ACCEPTED\n"); YYACCEPT; }
         ;
 
 identifierList  : identifier                                          { /* Insert new varType for identifier in a new varList */
