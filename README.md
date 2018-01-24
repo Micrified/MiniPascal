@@ -20,7 +20,11 @@ treats Procedures as Functions with undefined return types. Function return valu
 
 **Note:** Routines only accept **scalar** and **vector** arguments.
 
-You are not required to provide routines with all their arguments. However, you may not supply more than the routine signature specifies. 
+You are required to provide routines with all their defined arguments. There are two exceptions to this. 
+* `readln(...)`
+* `writeln(...)`
+
+The above procedures accept a variable number of arguments. `readln(...)` may not be given constant or vector arguments, however.
 
 ## Semantic Checks
 
@@ -29,7 +33,6 @@ You are not required to provide routines with all their arguments. However, you 
 2. Division-by-zero errors are thrown when division by a constant expression which is equivalent to zero (may be derived).
 4. Cascading errors are displayed for arithmetic operations involving undefined types.
 5. Boolean expressions are treated as integer arithmetic expressions where zero and nonzero define false and true respectively.
-6. Variable factors are checked for initialization.
 7. Function calls and array indexes are reduced to their primitive types (Integer/Real).
 
 ### Assignments
@@ -37,10 +40,10 @@ You are not required to provide routines with all their arguments. However, you 
 2. Assigned expressions are checked to ensure they are defined.
 3. A warning is displayed for assignments which truncate the assigned expression.
 4. An error is displayed for assignments declared above the maximum scope level. 
+5. Variables being assigned another variable directly (i.e: x := y) will throw warnings if y is uninitialized.
 
 ### Routines
-1. Checks if routine arguments are initialized.
-2. Checks that the number of arguments supplied are not greater than the maximum amount.
+2. Checks that the number of arguments supplied are not equal to the defined amount (exceptions for `readln`,`writeln`).
 3. Checks that correct argument types are provided.
 4. A warning is displayed for argument expressions which will be truncated.
 
@@ -49,7 +52,6 @@ You are not required to provide routines with all their arguments. However, you 
 
 
 ### Compound Statements
-1. A warning is displayed for empty compound statements.
-2. An error is displayed if function return variables are left uninitialized. This is scope specific.
+1. An error is displayed if function return variables are left uninitialized. This is scope specific.
 
 ###
