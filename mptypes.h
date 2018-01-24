@@ -19,10 +19,10 @@
 */
 
 // Represents an invalid table number index.
-#define NIL         -1    
+#define NIL             -1    
 
 // Type: Undefined.
-#define UNDEFINED    0
+#define UNDEFINED       0
 
 // Token-Type: Primitives.
 #define TT_INTEGER      1

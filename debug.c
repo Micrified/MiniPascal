@@ -25,39 +25,49 @@ int lp;
 
 // Print routine for structural syntax.
 static void printStructure () {
-    lp += snprintf(lineBuffer + lp, MAX_LINE_DEBUG - lp, C_TAF(BOL, BLK, "%s"), yytext);
+    const char *s = (inColor ? C_TAF(BOL, BLK, "%s") : "%s");
+    lp += snprintf(lineBuffer + lp, MAX_LINE_DEBUG - lp, s, yytext);
 }
 
 // Print routine for control characters.
 static void printControl() {
-    lp += snprintf(lineBuffer + lp, MAX_LINE_DEBUG - lp, C_TAF(BOL, BLK, "%s"), yytext);
+    const char *s = (inColor ? C_TAF(BOL, BLK, "%s") : "%s");
+    lp += snprintf(lineBuffer + lp, MAX_LINE_DEBUG - lp, s, yytext);
 }
 
 // Print routine for identifiers.
 static void printIdentifier () {
-    lp += snprintf(lineBuffer + lp, MAX_LINE_DEBUG - lp, C_TAF(BOL, BLU, "%s"), yytext);
+    const char *s = (inColor ? C_TAF(BOL, BLU, "%s") : "%s");
+    lp += snprintf(lineBuffer + lp, MAX_LINE_DEBUG - lp, s, yytext);
 }
 
 // Print routine for literals.
 static void printLiteral () {
-    lp += snprintf(lineBuffer + lp, MAX_LINE_DEBUG - lp, C_TAF(DIM, CYN, "%s"), yytext);
+    const char *s = (inColor ? C_TAF(DIM, CYN, "%s") : "%s");
+    lp += snprintf(lineBuffer + lp, MAX_LINE_DEBUG - lp, s, yytext);
 }
 
 // Print routine for operators.
 static void printOperation () {
-    lp += snprintf(lineBuffer + lp, MAX_LINE_DEBUG - lp, C_TAF(BOL, MAG, "%s"), yytext);
+    const char *s = (inColor ? C_TAF(BOL, MAG, "%s") : "%s");
+    lp += snprintf(lineBuffer + lp, MAX_LINE_DEBUG - lp, s, yytext);
 }
 
 // Print routine for whitespace.
 static void printWhitespace () {
+    const char *s;
     switch (*yytext) {
         case '\n':
-            if (inDebug) { fprintf(stderr, "%s" C_TAF(DIM, BLK, "\\n") "\n", lineBuffer); } 
+            s = (inColor ? ("%s" C_TAF(DIM, BLK, "\\n") "\n") : "%s\\n\n");
+            if (inDebug) { fprintf(stderr, s, lineBuffer); } 
+
+            s = (inColor ? C_TAF(DIM, BLK, "%d.\t") : "%d.\t");
             lp = 0;
-            lp += snprintf(lineBuffer + lp, MAX_LINE_DEBUG - lp, C_TAF(DIM, BLK, "%d.\t"), yylineno + 1);
+            lp += snprintf(lineBuffer + lp, MAX_LINE_DEBUG - lp, s, yylineno + 1);
             break;
         case '\t':
-            lp += snprintf(lineBuffer + lp, MAX_LINE_DEBUG - lp, C_TAF(DIM, BLK, "--->"));
+            s = (inColor ? C_TAF(DIM, BLK, "--->") : "--->");
+            lp += snprintf(lineBuffer + lp, MAX_LINE_DEBUG - lp, s);
             break;
         default:
             lp += snprintf(lineBuffer + lp, MAX_LINE_DEBUG - lp, " ");
@@ -67,8 +77,13 @@ static void printWhitespace () {
 
 // Print routine for misplaced tokens.
 static void printNaughty() {
-    fprintf(stderr, C_TAF(BOL, RED, "\nBAD TOKEN: "));
-    fprintf(stderr, C_TAF(UND, MAG, "%s"), yytext);
+    if (inColor) {
+        fprintf(stderr, C_TAF(BOL, RED, "\nBAD TOKEN: "));
+        fprintf(stderr, C_TAF(UND, MAG, "%s"), yytext);
+    } else {
+        fprintf(stderr, "\nBAD TOKEN: ");
+        fprintf(stderr, "%s", yytext);
+    }
     putc('\n', stderr);
 }
 
@@ -82,7 +97,11 @@ void printToken (SyntaxType t) {
     static int init = 0;
 
     if (!init) {
-        lp += snprintf(lineBuffer + lp, MAX_LINE_DEBUG - lp, C_TAF(DIM, BLK, "%d.\t"), yylineno);
+        if (inColor) {
+            lp += snprintf(lineBuffer + lp, MAX_LINE_DEBUG - lp, C_TAF(DIM, BLK, "%d.\t"), yylineno);
+        } else {
+            lp += snprintf(lineBuffer + lp, MAX_LINE_DEBUG - lp, "%d.\t", yylineno);
+        }
         init = 1;
     }
 
@@ -135,10 +154,16 @@ void printWarning (char *msg, ...) {
     va_start(ap, msg);
 
     // Prints warning message header.
-    fprintf(stderr, "\n" C_TAF(BOL, YEL, "Warning") " :: ");
+    if (inColor) {
+        fprintf(stderr, "\n" C_TAF(BOL, YEL, "Warning") " :: ");
+    } else {
+        fprintf(stderr, "\nWarning :: ");
+    }
 
     // Print formatted message: Set formatting.
-    fprintf(stderr, CONFIG_AF(UND, YEL));
+    if (inColor) {
+        fprintf(stderr, CONFIG_AF(UND, YEL));
+    }
 
     // Print formatted message.
     for (p = msg; *p != '\0'; p++) {
@@ -170,10 +195,16 @@ void printWarning (char *msg, ...) {
     va_end(ap);
 
     // End formatting.
-    fprintf(stderr, RESET);
+    if (inColor) {
+        fprintf(stderr, RESET);
+    }
 
     // Print line.
-    fprintf(stderr, "\n" C_TAF(BOL, RED, "--> ") "%s\n", lineBuffer);
+    if (inColor) {
+        fprintf(stderr, "\n" C_TAF(BOL, RED, "--> ") "%s\n", lineBuffer);
+    } else {
+        fprintf(stderr, "\n--> %s\n", lineBuffer);
+    }
 }
 
 /* Prints a error to stderr with description `msg`.
@@ -188,10 +219,16 @@ void printError (char *msg, ...) {
     va_start(ap, msg);
 
     // Prints warning message header.
-    fprintf(stderr, "\n" C_TAF(BOL, RED, "Error") " :: ");
+    if (inColor) {
+        fprintf(stderr, "\n" C_TAF(BOL, RED, "Error") " :: ");
+    } else {
+        fprintf(stderr, "\nError :: ");
+    }
 
     // Print formatted message: Set formatting.
-    fprintf(stderr, CONFIG_AF(UND, RED));
+    if (inColor) {
+        fprintf(stderr, CONFIG_AF(UND, RED));
+    }
 
     for (p = msg; *p != '\0'; p++) {
 
@@ -222,8 +259,14 @@ void printError (char *msg, ...) {
     va_end(ap);
 
     // End formatting.
-    fprintf(stderr, RESET);
+    if (inColor) {
+        fprintf(stderr, RESET);
+    }
 
     // Print line.
-    fprintf(stderr, "\n" C_TAF(BOL, RED, "--> ") "%s\n", lineBuffer);
+    if (inColor) {
+        fprintf(stderr, "\n" C_TAF(BOL, RED, "--> ") "%s\n", lineBuffer);
+    } else {
+        fprintf(stderr, "\n--> %s\n", lineBuffer);
+    }
 }

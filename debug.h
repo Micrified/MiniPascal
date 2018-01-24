@@ -27,6 +27,9 @@ int inDebug;
 // Quiet Mode Flag: If set, warnings are disabled.
 int inQuiet;
 
+// Color Mode Flag: If set, output is color-formatted.
+int inColor;
+
 typedef enum {
     Structure,
     Control,
