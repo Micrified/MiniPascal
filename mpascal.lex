@@ -23,7 +23,6 @@ letter          [a-zA-Z]
 identifier      {letter}({letter}|{digit}|"_")*
 integer         {digit}+
 real            {integer}("."{integer})?
-addop           [+-]
 mulop           [*]
 comment         \{[^\}]*\}
 
@@ -64,7 +63,8 @@ comment         \{[^\}]*\}
 ">"             { printToken(Operation);    return MP_RELOP_GT; }
 "<>"            { printToken(Operation);    return MP_RELOP_NE; }
 
-{addop}         { printToken(Operation);    return MP_ADDOP;    }
+"+"             { printToken(Operation);    return MP_ADDOP;    }
+"-"             { printToken(Operation);    return MP_SUBOP;    }
 
 {mulop}         { printToken(Operation);    return MP_MULOP;    } 
 (?i:DIV)        { printToken(Operation);    return MP_DIVOP;    }

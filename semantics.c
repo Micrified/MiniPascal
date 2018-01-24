@@ -14,6 +14,7 @@ static double performOperation (unsigned operator, double a, double b) {
 
         // Arithmetic Operators.
         case MP_ADDOP: return a + b;
+        case MP_SUBOP: return a - b;
         case MP_DIVOP: return a / b;
         case MP_MULOP: return a * b;
         case MP_MODOP: return (double)((int)a % (int)b);
@@ -157,6 +158,23 @@ varType resolveBooleanOperation (unsigned operator, varType a, varType b) {
     return initExprVarType(TC_SCALAR, TT_INTEGER, newValueIndex);
 }
 
+/* Applies a sign to a constant exprVarType. If not constant, the exprVarType
+ * is simply returned.
+*/
+varType applySign (unsigned operator, varType exprVarType) {
+
+    // (*). Return exprVarType if not scalar (shouldn't have set value anyways if so)
+    //      Also return if it is a scalar but has no constant value.
+    if (exprVarType.tc != TC_SCALAR || exprVarType.vi == NIL) {
+        return exprVarType;
+    }
+
+    // (*). Install new constant value in symbol table. Re-assign value-index.
+    int sign = (operator == MP_ADDOP) ? 1 : -1;
+    double *vp = numberAtIndex(exprVarType.vi); 
+    return initExprVarType(TC_SCALAR, exprVarType.tt, installNumber(sign * *vp));
+}
+
 /* Throws a warning if token-type of variable-expression isn't integer */
 void verifyGuardExprVar (varType var) {
     if (var.tc != TC_SCALAR || var.tt == UNDEFINED) {
@@ -192,12 +210,14 @@ varType initVarTypeFromId (unsigned id, unsigned tc) {
 }
 
 /* Resolves assignment of expression-variable to variable.
- * 1. If variable token-class is not scalar, an error is thrown.
- * 2. If expression-variable token-type is undefined, an error is thrown.
- * 3. Type promotion or truncation occurs in case of mismatching primitives.
- * 4. Sets the reference flag (rf) to true.
+ * 1. If variable token-class is not class scalar or vector, an error is thrown.
+ * 2. If expression-variable token-type is not primitive, an error is thrown.
+ * 3. If expression-variable has an id. Verify that variable was initialized.
+ * 4. Type promotion or truncation occurs in case of mismatching primitives.
+ * 5. Sets the reference flag (rf) to true.
  */ 
 void verifyAssignment (varType var, varType exprVar) {
+    IdEntry *entry;
 
     // (1). Verify variable token-class is assignable.
     if (var.tc != TC_SCALAR && var.tc != TC_VECTOR) {
@@ -213,10 +233,15 @@ void verifyAssignment (varType var, varType exprVar) {
         return;
     }
 
-    // (*). Extract IdEntry of id in var (Expects IdEntry to exist).
-    IdEntry *entry = containsIdEntry(var.id, var.tc, SYMTAB_SCOPE_ALL);
+    // (3). If expression-variable has an id. Verify that variable was initialized.
+    if (exprVar.id != NIL) {
+        isInitialized(exprVar.id, exprVar.tc);
+    } 
 
-    // (3). Verify exprVarType token-type matches.
+    // (*). Extract IdEntry of id in var (Expects IdEntry to exist).
+    entry = containsIdEntry(var.id, var.tc, SYMTAB_SCOPE_ALL);
+
+    // (4). Verify exprVarType token-type matches.
     if (entry->tt < exprVar.tt) {
         printWarning("Value assigned to \"%s\" \"%s\" will be truncated!",
             tokenTypeName(entry->tt),
@@ -224,7 +249,7 @@ void verifyAssignment (varType var, varType exprVar) {
         );
     }
 
-    // (4). Set referenced flag to true.
+    // (5). Set referenced flag to true.
     entry->rf = 1;
 }
 

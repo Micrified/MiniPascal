@@ -49,6 +49,11 @@ varType resolveArithmeticOperation (unsigned operator, varType a, varType b);
 */
 varType resolveBooleanOperation (unsigned operator, varType a, varType b);
 
+/* Applies a sign to a constant exprVarType. If not constant, the exprVarType
+ * is simply returned.
+*/
+varType applySign (unsigned operator, varType exprVarType);
+
 /* Throws a warning if token-type of variable-expression isn't integer */
 void verifyGuardExprVar (varType var);
 
@@ -64,10 +69,11 @@ void verifyGuardExprVar (varType var);
 varType initVarTypeFromId (unsigned id, unsigned tc);
 
 /* Resolves assignment of expression-variable to variable.
- * 1. If variable token-class is not scalar, an error is thrown.
- * 2. If expression-variable token-type is undefined, an error is thrown.
- * 3. Type promotion or truncation occurs in case of mismatching primitives.
- * 4. Sets the reference flag (rf) to true.
+ * 1. If variable token-class is not class scalar or vector, an error is thrown.
+ * 2. If expression-variable token-type is not primitive, an error is thrown.
+ * 3. If expression-variable has an id. Verify that variable was initialized.
+ * 4. Type promotion or truncation occurs in case of mismatching primitives.
+ * 5. Sets the reference flag (rf) to true.
  */ 
 void verifyAssignment (varType var, varType exprVar);
 

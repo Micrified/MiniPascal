@@ -23,6 +23,7 @@
 /* Variables local to debug. */
 extern int inDebug;
 extern int inQuiet;
+extern int inColor;
 
 /* Variables local to lex.yy.c */
 extern int yylex();
@@ -58,7 +59,8 @@ int yyerror(char *s) {
 %token MP_ELSE
 
 // Arithmetic Operator Tokens.
-%token MP_ADDOP 
+%token MP_ADDOP
+%token MP_SUBOP 
 %token MP_MULOP 
 %token MP_DIVOP
 %token MP_MODOP
@@ -129,7 +131,7 @@ int yyerror(char *s) {
 }
 
 // Nonterminal return type rules.
-%type <num> standardType identifier statementList optionalStatements
+%type <num> standardType identifier statementList optionalStatements sign
 %type <desc> type
 %type <var> factor term simpleExpression expression variable subprogramHead
 %type <varList> expressionList identifierList parameterList arguments declarations
@@ -144,11 +146,12 @@ int yyerror(char *s) {
 ********************************************************************************
 */
 
-program : MP_PROGRAM MP_ID MP_POPEN identifierList MP_PCLOSE MP_SCOLON declarations { /* Install declarations in symbol-table */ installVarList($7); freeVarList($7); } 
+program : MP_PROGRAM MP_ID MP_POPEN identifierList { /* Ignore program parameters */ freeVarList($4); } 
+          MP_PCLOSE MP_SCOLON declarations { /* Install declarations in symbol-table */ installVarList($8); freeVarList($8); } 
           subprogramDeclarations 
           compoundStatement 
           MP_FSTOP MP_EOF 
-          { printf("ACCEPTED\n"); exit(0); }
+          { YYACCEPT; }
         ;
 
 identifierList  : identifier                                          { /* Insert new varType for identifier in a new varList */
@@ -238,7 +241,7 @@ statementList : statement                                         { $$ = 1; }
               | statementList MP_SCOLON statement                 { $$ = $1 + 1; } 
               ;
 
-statement : variable MP_ASSIGNOP expression                       { /* Verify expression may be assigned to variable */
+statement : variable MP_ASSIGNOP expression                       { /* Verify expression may be assigned to variable.*/
                                                                     verifyAssignment($1, $3); 
                                                                   }                 
           | procedureStatement
@@ -296,9 +299,11 @@ expression  : simpleExpression                                    { $$ = $1; }
             ;
 
 simpleExpression  : term                                          { $$ = $1; }
-                  | sign term                                     { $$ = $2; }
-                  | simpleExpression MP_ADDOP term                { /* Check arithmetic expression types and attempt to resolve/fold expression */
-                                                                    $$ = resolveArithmeticOperation(MP_ADDOP, $1, $3); 
+                  | sign term                                     { /* Apply a sign to the term if constant. */
+                                                                    $$ = applySign($1, $2); 
+                                                                  }
+                  | simpleExpression sign term                    { /* Check arithmetic expression types and attempt to resolve/fold expression */
+                                                                    $$ = resolveArithmeticOperation($2, $1, $3); 
                                                                   }
                   ;
 
@@ -310,9 +315,8 @@ term  : factor                                                    { $$ = $1; }
       | term MP_MODOP factor                                      { $$ = resolveArithmeticOperation(MP_MODOP, $1, $3); }
       ;
 
-factor  : identifier                                              { /* Verify variable factor exists. Warn if uninitialized */
+factor  : identifier                                              { /* Verify variable factor exists. Initialization check is postponed until usage */
                                                                     if (existsId($1, TC_ANY)) {
-                                                                      isInitialized($1, TC_ANY);
                                                                       $$ = initVarTypeFromId($1, TC_ANY);
                                                                     } else { 
                                                                       $$ = initExprVarType(UNDEFINED, UNDEFINED, NIL); 
@@ -344,7 +348,8 @@ identifier : MP_ID                                                { /* Dedicated
                                                                     $$ = installId(yytext); 
                                                                   }
 
-sign  : MP_ADDOP
+sign  : MP_ADDOP                                                  { $$ = MP_ADDOP; }
+      | MP_SUBOP                                                  { $$ = MP_SUBOP; }
       ;
 
 
@@ -356,20 +361,39 @@ sign  : MP_ADDOP
  ********************************************************************************
  */
 
-/* Parses program argument vector for program flags */
+/* Simply usage manual */
+ #define MP_USAGE   "\nSupported Program Flags:\n \
+\t-d : Debug Mode. Outputs file while parsing.\n \
+\t-q : Quiet Mode. Surpresses all warnings.\n \
+\t-c : Color Mode. All output (and syntax) has\n \
+\t     color.\n\n"
+
+/* Parses program argument vector for program flags.
+ * Supported flags: 
+ * -c : Color Mode. Semantic Analysis output is color-formatted.
+ * -d : Debug Mode. Outputs lines as they are parsed. Useful for syntax errors.
+ * -q : Quiet Mode. Disabled all warnings.
+ */
 void parseArguments (int argc, char *argv[]) {
   char *arg;
 
   while (--argc && *(arg = *++argv) == '-') {
     switch (*++arg) {
+      case 'c':
+        inColor = 1;
+        break;
       case 'd':
         inDebug = 1; 
+        break;
+      case 'h':
+        fprintf(stdout, MP_USAGE);
         break;
       case 'q':
         inQuiet = 1;
         break;
       default:
         fprintf(stderr, "Unknown argument \"-%s\"!\n", arg);
+        fprintf(stderr, "%s", MP_USAGE);
         exit(EXIT_FAILURE);
         break;
     }
