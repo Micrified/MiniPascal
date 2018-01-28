@@ -368,8 +368,9 @@ void verifyRoutineArgs (unsigned id, varListType exprVarList) {
 
     // (1). Verify length matches.
     if (entry->data.argc != exprVarList.length) {
-        printError("\"%s\" requires %d arguments, not %d!", 
-        identifierAtIndex(id), entry->data.argc, exprVarList.length);
+        printError("\"%s\" requires %d argument%s, not %d!", 
+        identifierAtIndex(id), entry->data.argc, (entry->data.argc > 1) ? "s" : "", 
+        exprVarList.length);
         return;
     }
 

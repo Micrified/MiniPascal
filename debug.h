@@ -30,6 +30,9 @@ int inQuiet;
 // Color Mode Flag: If set, output is color-formatted.
 int inColor;
 
+// Error Flag: If set, then an error was encountered.
+int isError;
+
 typedef enum {
     Structure,
     Control,
