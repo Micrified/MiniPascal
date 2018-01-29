@@ -230,7 +230,7 @@ IdEntry *installIdEntry (unsigned id, unsigned tc, unsigned tt, unsigned vb, uns
 
     // Verify entry does not exist yet.
     if ((lp = listContains(id, tc, symTable[h][lvl])) != NULL) {
-        fprintf(stderr, "Error: installIdEntry: Entry already exists in table!\n");
+        fprintf(stderr, "Error: installIdEntry: Entry %s already exists in table!\n", identifierAtIndex(id));
         exit(EXIT_FAILURE);
     }
 

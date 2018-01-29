@@ -13,7 +13,8 @@ dataType *allocDataType (void) {
         fprintf(stderr, "Error: allocDataType: Couldn't allocate memory!\n");
         exit(EXIT_FAILURE);
     }
-    dt->id = dt->tc = dt->tt = dt->ti = dt->tn = dt->vb = dt->vl = dt->op = UNDEFINED;
+    dt->tc = dt->tt = dt->ti = dt->tn = dt->vb = dt->vl = dt->op = UNDEFINED;
+    dt->id = NIL;
     return dt;
 }
 

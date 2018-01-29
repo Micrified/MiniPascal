@@ -127,10 +127,10 @@ int yyerror(char *s) {
 }
 
 // Nonterminal return type rules.
-%type <num> standardType sign identifier
-%type <desc> type 
+%type <num> standardType sign identifier 
+%type <desc> type subprogramHead
 %type <data> variable expression factor term simpleExpression
-%type <dataList> declarations identifierList expressionList
+%type <dataList> declarations identifierList expressionList parameterList arguments
 
 // Starting Grammar Rule.
 %start program
@@ -205,20 +205,93 @@ subprogramDeclarations  : subprogramDeclarations subprogramDeclaration MP_SCOLON
                         |
                         ;
 
-subprogramDeclaration : subprogramHead declarations 
-                        compoundStatement
+subprogramDeclaration : subprogramHead                                                    { /* Generate the opening brace after the header */
+                                                                                             genBlockStart();  
+                                                                                          }
+                        declarations                                                      { 
+                                                                                            /* If the routine is a function, install a local scalar declaration to return */ 
+                                                                                            if ($1.tc != UNDEFINED) {
+                                                                                              installIdEntry($1.tt, TC_SCALAR, $1.tc, 0, 0);
+                                                                                              genScalarDec($1.tc, identifierAtIndex($1.tt));
+                                                                                            }
+
+                                                                                            /* Install all remaining local variable declarations. */
+                                                                                            for (int i = 0; i < $3.length; i++) {
+                                                                                              dataType *d = $3.list[i];
+
+                                                                                              /* Install each entry into the symbol table */
+                                                                                              installIdEntry(d->id, d->tc, d->tt, d->vb, d->vl);
+
+                                                                                              /* Generate an appropriate declaration (Vector | Scalar) */
+                                                                                              if (d->tc == TC_VECTOR) {
+                                                                                                genVectorDec(d->tt, d->vl, identifierAtIndex(d->id));
+                                                                                              } else {
+                                                                                                genScalarDec(d->tt, identifierAtIndex(d->id));
+                                                                                              }
+                                                                                            }
+
+                                                                                            /* Clean up allocated memory */
+                                                                                            freeDataList($3);
+                                                                                          }  
+                        compoundStatement                                                 { /* Generate the return statement, close the block, and decrement table scope */
+                                                                                            genReturn($1.tc, $1.tt); genBlockEnd(); decrementTableScope();
+                                                                                          }
                       ;
 
-subprogramHead  : MP_FUNCTION identifier arguments MP_COLON standardType MP_SCOLON  
-                | MP_PROCEDURE identifier arguments MP_SCOLON                                           
+subprogramHead  : MP_FUNCTION identifier arguments MP_COLON standardType MP_SCOLON        { /* Install function header */ 
+                                                                                            genRoutineDec($5, identifierAtIndex($2), $3);
+
+                                                                                            /* Install entry: Vector-Count (vc) stores arg count */
+                                                                                            installIdEntry($2, TC_ROUTINE, $5, 0, $3.length);
+
+                                                                                            /* Increment table scope before installing arguments */
+                                                                                            incrementTableScope();
+
+                                                                                            /* Install arguments */
+                                                                                            for (int i = 0; i < $3.length; i++) {
+                                                                                              dataType *d = $3.list[i];
+                                                                                              
+                                                                                              /* Install each entry into the symbol table */
+                                                                                              installIdEntry(d->id, d->tc, d->tt, d->vb, d->vl);
+                                                                                            }
+
+                                                                                            /* Free allocated memory */
+                                                                                            freeDataList($3);
+
+                                                                                            /* Custom DescType (.tc = Return Token-Type, .tt = Routine Name) */
+                                                                                            $$ = (descType){.tc = $5, .tt = $2, .vb = 0, .vl = 0};
+                                                                                          } 
+                | MP_PROCEDURE identifier arguments MP_SCOLON                             { /* Install void function header */
+                                                                                            genRoutineDec(UNDEFINED, identifierAtIndex($2), $3);
+
+                                                                                            /* Install entry: Vector-Count (vc) stores arg count */
+                                                                                            installIdEntry($2, TC_ROUTINE, UNDEFINED, 0, $3.length);
+
+                                                                                            /* Increment table scope before installing arguments */
+                                                                                            incrementTableScope();
+
+                                                                                            /* Install arguments */
+                                                                                            for (int i = 0; i < $3.length; i++) {
+                                                                                              dataType *d = $3.list[i];
+                                                                                              
+                                                                                              /* Install each entry into the symbol table */
+                                                                                              installIdEntry(d->id, d->tc, d->tt, d->vb, d->vl);
+                                                                                            }
+
+                                                                                            /* Free allocated memory */
+                                                                                            freeDataList($3);
+
+                                                                                            /* Custom DescType (.tc = Return Token-Type, .tt = Routine Name) */
+                                                                                            $$ = (descType){.tc = UNDEFINED, .tt = $2, .vb = 0, .vl = 0};
+                                                                                          }                                  
                 ;
 
-arguments : MP_POPEN parameterList MP_PCLOSE                      
-          |                                                       
+arguments : MP_POPEN parameterList MP_PCLOSE                                        { $$ = $2; }                      
+          |                                                                         { $$ = initDataListType(); }
           ;
 
-parameterList : identifierList MP_COLON type                                              
-              | parameterList MP_SCOLON identifierList MP_COLON type  
+parameterList : identifierList MP_COLON type                                        { $$ = mapDescToDataList($3, $1); }                                              
+              | parameterList MP_SCOLON identifierList MP_COLON type                { $$ = appendDataList(mapDescToDataList($5, $3), $1); }  
               ;
 
 compoundStatement : MP_BEGIN optionalStatements MP_END    
@@ -261,10 +334,15 @@ variable  : identifier                                            { /* Initializ
                                                                   }
                                                                                    
 procedureStatement  : identifier                                 
-                    | identifier MP_POPEN expressionList MP_PCLOSE  { /* Procedure calls are disabled */
+                    | identifier MP_POPEN expressionList MP_PCLOSE  { /* Procedure call */
+
+                                                                      /* Extract routine IdEntry */
+
+                                                                      /* Generate routine call */
+                                                                      genProcCall(identifierAtIndex($1), $3);
+
+                                                                      /* Free allocated memory */
                                                                       freeDataList($3);
-                                                                      fprintf(stderr, "Error: Procedure calls are not available!\n");
-                                                                      exit(EXIT_FAILURE);
                                                                     }
                     | MP_READLN MP_POPEN expressionList MP_PCLOSE   { /* Generate corresponding readln function in C. */
                                                                       genReadLn($3);
@@ -310,12 +388,18 @@ term  : factor                                                    { $$ = $1; }
 factor  : identifier                                              {
                                                                     /* Extracting Entry and populating dataType fields. */
                                                                     IdEntry *entry = containsIdEntry($1, TC_ANY, SYMTAB_SCOPE_ALL);
-                                                                    $$ = initExprVarDataType(genId(entry->tt, identifierAtIndex($1)), entry->tc, entry->tt, $1);
+                                                                    $$ = initExprVarDataType(genId(entry->tc, entry->tt, identifierAtIndex($1)), entry->tc, entry->tt, $1);
                                                                   }
-        | identifier MP_POPEN expressionList MP_PCLOSE            { /* This is currently disabled */
+        | identifier MP_POPEN expressionList MP_PCLOSE            { /* Function call */
+
+                                                                    /* Extract routine IdEntry */
+                                                                    IdEntry *entry = containsIdEntry($1, TC_ROUTINE, SYMTAB_SCOPE_ALL);
+
+                                                                    /* Generate routine call */
+                                                                    $$ = initExprConstDataType(genFuncCall(entry->tt, identifierAtIndex($1), $3), entry->tt);
+
+                                                                    /* Free allocated memory */
                                                                     freeDataList($3);
-                                                                    fprintf(stderr, "Error: Function calls are not available!\n");
-                                                                    exit(EXIT_FAILURE);
                                                                   }
         | identifier MP_BOPEN expression MP_BCLOSE                {
                                                                     /* Extracting Entry. Generating indexed variable code */

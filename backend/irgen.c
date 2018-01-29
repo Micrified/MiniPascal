@@ -21,6 +21,7 @@ static unsigned l;
 /* Returns a corresponding C type for a given MP_<token> or TT_<token> */
 static const char *getCType (unsigned tt) {
     switch (tt) {
+        case UNDEFINED:     return "void";
         case TT_INTEGER:    return "int";
         case MP_INTEGER:    return "int";
         case TT_REAL:       return "double";
@@ -67,6 +68,26 @@ static const char *invOp (unsigned operator) {
     exit(EXIT_FAILURE);
 }
 
+/* Writes a comma delimited list of C-type datatypes to given FILE */
+static void writeDataList (FILE *fp, dataListType dataList, unsigned onlyId) {
+    for (int i = 0; i < dataList.length; i++) {
+        dataType *dt = dataList.list[i];
+        const char *p = (dt->tc == TC_VECTOR) ? "[]" : "";
+        if (onlyId) {
+            if (dt->id == NIL) {
+                fprintf(fp, "t%u", dt->tn);
+            } else {
+                fprintf(fp, "%s", identifierAtIndex(dt->id));
+            }
+        } else {
+            fprintf(fp, "%s %s%s", getCType(dt->tt), identifierAtIndex(dt->id), p);
+        }
+        if (i < dataList.length - 1) {
+            fprintf(fp, ", ");
+        }
+    }
+}
+
 /*
 ***************************************************************************
 *                     Expression Generation Routines
@@ -84,8 +105,12 @@ unsigned genConst (unsigned tt, double n) {
 }
 
 /* Generates a T-Label for given identifier. Returns T-Label num */
-unsigned genId (unsigned tt, const char *identifier) {
-    fprintf(irfp, "%s t%u = %s;\n", getCType(tt), t, identifier);
+unsigned genId (unsigned tc, unsigned tt, const char *identifier) {
+    if (tc == TC_SCALAR) {
+        fprintf(irfp, "%s t%u = %s;\n", getCType(tt), t, identifier);
+    } else {
+        fprintf(irfp, "%s *t%u = %s;\n", getCType(tt), t, identifier);
+    }
     return t++;
 }
 
@@ -114,6 +139,39 @@ unsigned genBoolOp (unsigned tx, unsigned ty) {
     fprintf(irfp, "int t%u = t%u - t%u;\n", t, tx, ty);
     return t++;
 }
+
+/* Generates a T-Label for a function invocation. Returns T-Label num. */
+unsigned genFuncCall (unsigned tt, const char *name, dataListType args) {
+
+    // Generate call head.
+    fprintf(irfp, "%s t%u = %s", getCType(tt), t, name);
+
+    // Generate args.
+    putc('(', irfp);
+    writeDataList(irfp, args, 1);
+    putc(')', irfp);
+
+    // Generate call end.
+    fprintf(irfp, ";\n");
+
+    return t++;
+}
+
+/* Generates a T-Label for a procedure invocation. No label returned. */
+void genProcCall (const char *name, dataListType args) {
+    
+    // Generate call head.
+    fprintf(irfp, "%s", name);
+
+    // Generate args.
+    putc('(', irfp);
+    writeDataList(irfp, args, 1);
+    putc(')', irfp);
+
+    // Generate call end.
+    fprintf(irfp, ";\n");
+}
+
 
 /*
 ***************************************************************************
@@ -189,6 +247,33 @@ void genVectorDec (unsigned tt, unsigned n, const char *identifier) {
 
 /*
 ***************************************************************************
+*                       Routine Generation Routines
+***************************************************************************
+*/
+
+/* Generates a routine declaration */
+void genRoutineDec (unsigned tt, const char *name, dataListType args) {
+
+    // Install return type and name.
+    fprintf(irfp, "%s %s", getCType(tt), name);
+
+    // Install arguments */
+    putc('(', irfp);
+    writeDataList(irfp, args, 0);
+    putc(')', irfp);
+}
+
+/* Generates a routine return statement */
+void genReturn (unsigned tt, unsigned id) {
+    if (tt == UNDEFINED) {
+        fprintf(irfp, "return;\n");
+    } else {
+        fprintf(irfp, "return %s;\n", identifierAtIndex(id));
+    }
+}
+
+/*
+***************************************************************************
 *                    Structural Generation Routines
 ***************************************************************************
 */
@@ -201,6 +286,16 @@ void genMainHeader () {
 /* Generates the return statement and closing brace for main */
 void genMainEnd () {
     fprintf(irfp, "return 0;\n}\n");
+}
+
+/* Generates the opening of a block (newline + Opening brace + newline) */
+void genBlockStart() {
+    fprintf(irfp, "\n{\n");
+}
+
+/* Generates the end of a block (newline + Closing brace + newline) */
+void genBlockEnd() {
+    fprintf(irfp, "}\n");
 }
 
 /*
