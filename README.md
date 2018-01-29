@@ -13,6 +13,15 @@ Compiling takes only a couple of steps.
 
 That's it, the program should be ready to go. Simply invoke with `./mpc <inputfile> <outputfile>`
 
+### Valgrind
+
+Running Valgrind requires both the semantic analysis stage and intermediate code generation stage be run independently.
+
+1. Use `make` to produce the frontend's `./a.out`. It is already compiled with `-g`, so you can test it with: `valgrind ./a.out < inputFile`.
+2. Use `make` to produce the backend's `./a.out`. It is already compiled with `-g`, so you can test it with: `valgrind ./a.out outputFile < inputFile`.
+
+And that's it!
+
 ## Design 
 
 Variables may share identifiers so long as they are of a unique token-class. The possible token-classes are as follows:
