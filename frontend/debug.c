@@ -214,6 +214,9 @@ void printError (char *msg, ...) {
     int ival;
     double fval;
 
+    // Set the error flag to true */
+    isError = 1;
+
     // Initialize the variadic argument list.
     va_list ap;
     va_start(ap, msg);

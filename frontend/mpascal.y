@@ -18,12 +18,13 @@
 #include <stdlib.h>
 
 /* Custom Routine Imports */
-#include "semantics.h"  // Semantic Checking Routines.
+
 
 /* Variables local to debug. */
 extern int inDebug;
 extern int inQuiet;
 extern int inColor;
+extern int isError;
 
 /* Variables local to lex.yy.c */
 extern int yylex();
@@ -116,10 +117,12 @@ int yyerror(char *s) {
 
 // YYSTYPE Dependencies.
 %code requires {
+  #include "debug.h"
   #include "mptypes.h"    // Types used in symantic checker.
   #include "strtab.h"     // String Table.
   #include "numtab.h"     // Number Table.
   #include "symtab.h"     // Symbol Table.
+  #include "semantics.h"
 }
 
 // Bison YYSTYPE Declarations.
@@ -422,6 +425,6 @@ int main(int argc, char *argv[]) {
   // Free Flex memory.
   yylex_destroy();
   
-  return EXIT_SUCCESS;
+  return (isError != 0 ? EXIT_FAILURE : EXIT_SUCCESS);
 }
 

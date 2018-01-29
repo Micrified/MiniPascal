@@ -10,9 +10,6 @@
      ***************************************************************************
     */
 
-    /* Debugging toolset */
-    #include "debug.c"
-
     /* Counts newlines in the given string. Used to count newlines in comments */
     int newlineCount (const char *sp);
 %}
