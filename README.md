@@ -4,6 +4,15 @@
 
 MiniPascal is a compiler for a largely simplified version of Pascal. It is fundamentally a toy for learning the workings of compilers, and shouldn't be taken seriously. 
 
+### Compiling
+
+Compiling takes only a couple of steps.
+
+1. Build frontend and backend executables in top-level directory: `make subsystem` 
+2. Build the top level program (mpc) with: `make`
+
+That's it, the program should be ready to go. Simply invoke with `./mpc <inputfile> <outputfile>`
+
 ## Design 
 
 Variables may share identifiers so long as they are of a unique token-class. The possible token-classes are as follows:
@@ -24,7 +33,7 @@ You are required to provide routines with all their defined arguments. There are
 * `readln(...)`
 * `writeln(...)`
 
-The above procedures accept a variable number of arguments. `readln(...)` may not be given constant or vector arguments, however.
+The above procedures accept a variable number of arguments. Neither `writeln` or `readln(...)` may be given constant or vector arguments, however.
 
 ## Semantic Checks
 

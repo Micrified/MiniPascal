@@ -425,6 +425,6 @@ int main(int argc, char *argv[]) {
   // Free Flex memory.
   yylex_destroy();
   
-  return (isError ? EXIT_FAILURE : EXIT_SUCCESS);
+  return (isError != 0 ? EXIT_FAILURE : EXIT_SUCCESS);
 }
 
