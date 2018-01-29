@@ -129,7 +129,7 @@ void genScalarAssignment (const char *identifier, unsigned ti) {
 /* Generates a T-Label for a vector-index assignment. */
 void genVectorAssignment (const char *identifier, unsigned ti, unsigned vb, unsigned te) {
     unsigned adjustedTi = t;
-    fprintf(irfp, "int t%u = t%u - %u;\n", t, ti, vb);
+    fprintf(irfp, "int t%u = t%u - %u;\n", t++, ti, vb);
     fprintf(irfp, "%s[t%u] = t%u;\n", identifier, adjustedTi, te);
 }
 

@@ -1,15 +1,18 @@
 PROGRAM emirps (n);
 
 VAR a, b : INTEGER;
+VAR z : array [0..9] of INTEGER;
 
-FUNCTION reverse (n : INTEGER) : INTEGER;
 BEGIN
-    a := 3.5;
-    b := 3
+a := 1;
+
+while a < 10 do
+BEGIN
+    z[a - 1] := a;
+    a := a + 1
 END;
 
-
-BEGIN
-    a := reverse(b,c);
-    b := 0
+a := z[0];
+b := z[8];
+writeln(a,b)
 END.
