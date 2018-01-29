@@ -2,8 +2,6 @@ PROGRAM euclid (input, output);
 VAR a, b : integer;
 
 BEGIN
-    a := 0.0;
-    b := a;
     readln(a, b);
     WHILE a <> b DO
     BEGIN
