@@ -33,7 +33,7 @@ extern FILE *irfp;
 unsigned genConst (unsigned tt, double n);
 
 /* Generates a T-Label for given identifier. Returns T-Label num */
-unsigned genId (unsigned tt, const char *identifier);
+unsigned genId (unsigned tc, unsigned tt, const char *identifier);
 
 /* Generates a T-Label for an T-indexed vector. Returns T-Label num. */
 unsigned genVecIdx (unsigned tt, const char *identifier, unsigned ti, unsigned vb);
@@ -46,6 +46,12 @@ unsigned genArithOp (unsigned tt, unsigned operator, unsigned tx, unsigned ty);
 
 /* Generates a T-Label for a boolean operation (tx - ty). Returns T-Label num. */
 unsigned genBoolOp (unsigned tx, unsigned ty);
+
+/* Generates a T-Label for a function invocation. Returns T-Label num. */
+unsigned genFuncCall (unsigned tt, const char *name, dataListType args);
+
+/* Generates a T-Label for a procedure invocation. No label returned. */
+void genProcCall (const char *name, dataListType args);
 
 /*
 ***************************************************************************
@@ -97,6 +103,18 @@ void genVectorDec (unsigned tt, unsigned n, const char *identifier);
 
 /*
 ***************************************************************************
+*                    Routine Generation Prototypes
+***************************************************************************
+*/
+
+/* Generates a routine declaration */
+void genRoutineDec (unsigned tt, const char *name, dataListType args);
+
+/* Generates a routine return statement */
+void genReturn (unsigned tt, unsigned id);
+
+/*
+***************************************************************************
 *                    Structural Generation Prototypes
 ***************************************************************************
 */
@@ -106,6 +124,12 @@ void genMainHeader ();
 
 /* Generates the return statement and closing brace for main */
 void genMainEnd ();
+
+/* Generates the opening of a block (Opening brace + newline) */
+void genBlockStart();
+
+/* Generates the end of a block (Closing brace + newline) */
+void genBlockEnd();
 
 /*
 ***************************************************************************
